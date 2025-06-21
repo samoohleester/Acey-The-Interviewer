@@ -1,2 +1,5 @@
 Flask
-Flask-Cors 
+Flask-Cors
+vapi-server-sdk
+google-generativeai
+python-dotenv 

@@ -36,3 +36,37 @@
     transform: rotate(360deg);
   }
 }
+
+.status-container,
+.button-container,
+.transcript-container {
+  margin-top: 20px;
+}
+
+.transcript-container textarea {
+  width: 80%;
+  height: 200px;
+  margin-top: 10px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 5px;
+  padding: 10px;
+  font-size: 1rem;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  background-color: #61dafb;
+  color: #282c34;
+  margin: 0 10px;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
