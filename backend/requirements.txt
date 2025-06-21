@@ -2,4 +2,5 @@ Flask
 Flask-Cors
 vapi-server-sdk
 google-generativeai
-python-dotenv 
+python-dotenv
+Pillow 
