@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from vapi import Vapi
 import google.generativeai as genai
 import time
+import json
 
 # --- IMPORTANT ---
 # You must run a tunneling service like ngrok for Vapi to reach this local server.
@@ -72,7 +73,7 @@ def get_vapi_assistant():
                 "messages": [
                     {
                         "role": "system",
-                        "content": "CRITICAL INSTRUCTION: You are Acey. You MUST NEVER say 'moment', 'sec', 'hold on', 'wait', 'think', 'um', 'uh', 'well', 'so', or any hesitation words. You are DIRECT. Keep responses under 5 words. Ask one question at a time. If you violate this instruction, the interview fails.",
+                        "content": "You are 'Acey', a friendly and professional AI interviewer. Your goal is to conduct a brief but effective behavioral interview. Ask one question at a time. Focus on project experiences, problem-solving skills, and teamwork. Frame your questions to encourage the user to respond with the STAR method (Situation, Task, Action, Result). Be concise and direct, but not robotic. Avoid filler words.",
                     }
                 ],
             },
@@ -81,7 +82,6 @@ def get_vapi_assistant():
                 "voiceId": "21m00Tcm4TlvDq8ikWAM",
             },
             first_message="Tell me about a recent project.",
-            webhook_url=f"{NGROK_URL}/api/vapi-webhook" if "YOUR_NGROK" not in NGROK_URL else None,
         )
         
         current_assistant_id = assistant.id
@@ -116,7 +116,7 @@ def analyze_frame():
         image = Image.open(BytesIO(frame_bytes))
         print(f"Image opened successfully: {image.size} {image.mode}")
         
-        prompt = "You are a body language expert providing feedback for a mock interview. Analyze the user's expression and posture in this single frame. Are they engaged? Do they appear confident? Be concise and encouraging. Address the user as 'you'."
+        prompt = "You are a body language expert. Analyze this single frame from a mock interview. Focus on eye contact (are they looking at the camera?), facial expression (do they look engaged and friendly?), and posture (are they sitting up straight?). Provide one specific, encouraging tip for improvement. Address the user as 'you'. Example: 'You look engaged! Try to maintain eye contact with the camera as if it were the interviewer.'"
         print("Sending to Gemini for analysis...")
         response = model.generate_content([prompt, image])
         
@@ -136,145 +136,76 @@ def analyze_frame():
         traceback.print_exc()
         return jsonify({"error": f"Failed to analyze frame: {str(e)}"}), 500
 
-@app.route('/api/get-review', methods=['GET'])
+@app.route('/api/get-review', methods=['POST'])
 def get_review():
-    if not frame_analyses:
-        return jsonify({"review": "No frames were analyzed during the call."})
+    data = request.get_json()
+    transcript = data.get('transcript')
+
+    if not transcript and not frame_analyses:
+        return jsonify({"review": {"error": "No data available for review. The call may have been too short."}})
+
+    # Build the prompt for comprehensive review
+    body_language_summary = "No frames were analyzed."
+    if frame_analyses:
+        # Join the list of individual frame analyses into a single string
+        body_language_summary = "\\n- ".join(frame_analyses)
+
+    synthesis_prompt = f"""
+    You are an expert interview coach. Analyze the following mock interview and return a JSON object.
+
+    Analyze the following transcript and body language observations.
+    
+    Transcript:
+    ---
+    {transcript}
+    ---
+
+    Body Language Observations:
+    ---
+    - {body_language_summary}
+    ---
+    
+    Based on all available data, provide a comprehensive review in the following JSON format.
+    The response MUST be a valid JSON object.
+    
+    {{
+      "whatYouDidWell": ["Point 1 about what went well.", "Point 2 about what went well."],
+      "areasForImprovement": ["Point 1 about what to improve.", "Point 2 about what to improve."],
+      "overallScore": <an integer score from 1 to 10>,
+      "summary": "A brief, one-paragraph summary of the feedback."
+    }}
+    
+    Analyze for clarity, conciseness, filler words, STAR method usage, engagement, and eye contact.
+    """
 
     try:
-        print(f"Getting review with {len(frame_analyses)} frame analyses")
-        # Simplified prompt to avoid potential issues
-        synthesis_prompt = f"""
-        Based on these body language observations from an interview, provide brief, encouraging feedback:
-        {chr(10).join(frame_analyses)}
-        
-        Give one paragraph of constructive feedback.
-        """
-        print("Generating review with simplified prompt")
+        print("Generating comprehensive review with Gemini...")
         response = model.generate_content(synthesis_prompt)
-        review_text = response.text if response.text else "No review could be generated."
-        print("Generated review:", review_text)
-        # Clear the list for the next call
+        
+        # Clean the response to ensure it's valid JSON
+        cleaned_response_text = response.text.strip().replace("```json", "").replace("```", "")
+        
+        # Parse the JSON string into a Python dictionary
+        review_json = json.loads(cleaned_response_text)
+        
+        print("Generated Review JSON:", review_json)
+        # Clear the stored analyses for the next call
         frame_analyses.clear()
-        return jsonify({"review": review_text})
+        
+        return jsonify(review_json)
     except Exception as e:
         print(f"Error in get_review: {e}")
-        print(f"Exception type: {type(e)}")
         import traceback
         traceback.print_exc()
-        # Return a fallback review instead of failing
-        fallback_review = "Thank you for participating in the interview. Your body language analysis will be available once the system is fully operational."
+        # Return a fallback review in case of an error
+        fallback_review = {
+            "summary": "There was an error generating your review. The AI response may not have been in the correct format. Please try again.",
+            "whatYouDidWell": [],
+            "areasForImprovement": [],
+            "overallScore": 0
+        }
         frame_analyses.clear()
-        return jsonify({"review": fallback_review})
-
-@app.route('/api/trigger-review', methods=['POST'])
-def trigger_review():
-    """Manual endpoint to trigger review generation when call is manually ended"""
-    try:
-        print(f"Triggering review with {len(frame_analyses)} frame analyses")
-        if not frame_analyses:
-            return jsonify({"review": "No frames were analyzed during the call."})
-        
-        # Simplified prompt to avoid potential issues
-        synthesis_prompt = f"""
-        Based on these body language observations from an interview, provide brief, encouraging feedback:
-        {chr(10).join(frame_analyses)}
-        
-        Give one paragraph of constructive feedback.
-        """
-        print("Generating review with simplified prompt")
-        response = model.generate_content(synthesis_prompt)
-        review_text = response.text if response.text else "No review could be generated."
-        print("Generated review:", review_text)
-        # Clear the list for the next call
-        frame_analyses.clear()
-        return jsonify({"review": review_text})
-    except Exception as e:
-        print(f"Error in trigger_review: {e}")
-        print(f"Exception type: {type(e)}")
-        import traceback
-        traceback.print_exc()
-        # Return a fallback review instead of failing
-        fallback_review = "Thank you for participating in the interview. Your body language analysis will be available once the system is fully operational."
-        frame_analyses.clear()
-        return jsonify({"review": fallback_review})
-
-@app.route('/api/vapi-webhook', methods=['POST'])
-def vapi_webhook():
-    print("=== WEBHOOK RECEIVED ===")
-    payload = request.get_json()
-    print(f"Webhook payload: {payload}")
-    
-    global question_count, current_assistant_id
-    
-    message = payload.get('message', {})
-    message_type = message.get('type')
-    print(f"Message type: {message_type}")
-    
-    # Track assistant messages to count questions
-    if message_type == 'assistant-message':
-        question_count += 1
-        print(f"Question count: {question_count}")
-        
-        # Check if we should end the interview based on question count
-        if question_count >= 5:
-            print("Interview completed - 5 questions asked")
-            return jsonify({
-                "hangup": True,
-                "reason": "Interview completed successfully"
-            })
-    
-    # Check for user responses to detect unresponsiveness
-    elif message_type == 'user-message':
-        user_text = message.get('transcript', '').lower()
-        print(f"User said: {user_text}")
-        
-        # Check for unresponsive patterns
-        unresponsive_phrases = [
-            'i don\'t know', 'i don\'t have', 'nothing', 'none', 
-            'i can\'t think', 'i\'m not sure', 'i don\'t remember'
-        ]
-        
-        is_unresponsive = any(phrase in user_text for phrase in unresponsive_phrases)
-        
-        if is_unresponsive:
-            print("User appears unresponsive")
-            # Only end if this is the second unresponsive answer
-            if question_count >= 3:  # Give them a few chances
-                print("Ending interview due to unresponsiveness")
-                return jsonify({
-                    "hangup": True,
-                    "reason": "User unresponsive"
-                })
-    
-    # Check for function calls (if any are implemented)
-    elif message_type == 'function-call':
-        function_call = message.get('functionCall', {})
-        function_name = function_call.get('name')
-        print(f"Function call detected: {function_name}")
-        
-        if function_name == 'end_interview':
-            reason = function_call.get('arguments', {}).get('reason', 'unknown')
-            print(f"Ending interview via function call: {reason}")
-            return jsonify({
-                "hangup": True,
-                "reason": reason
-            })
-    
-    # Check for call events
-    call_event = payload.get('call', {})
-    if call_event:
-        call_status = call_event.get('status')
-        print(f"Call status: {call_status}")
-        
-        # End call if it's been going too long (safety measure)
-        if call_status == 'active':
-            # You could add a timestamp check here if needed
-            pass
-    
-    # For all other cases, continue the interview
-    print("Continuing interview...")
-    return jsonify({})
+        return jsonify(fallback_review), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001) 

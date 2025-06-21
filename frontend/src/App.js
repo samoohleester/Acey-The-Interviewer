@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Vapi from '@vapi-ai/web';
 import Webcam from 'react-webcam';
 import './App.css';
@@ -10,9 +11,10 @@ const vapi = new Vapi('03ddb274-4754-43a9-a48f-edce472b1f4c');
 function App() {
   const [callStatus, setCallStatus] = useState('inactive');
   const [transcript, setTranscript] = useState('');
-  const [review, setReview] = useState('');
+  const [report, setReport] = useState(null);
   const webcamRef = useRef(null);
   const captureIntervalRef = useRef(null);
+  const navigate = useNavigate();
 
   const sendFrameForAnalysis = useCallback(async () => {
     if (webcamRef.current) {
@@ -62,14 +64,10 @@ function App() {
       setCallStatus('inactive');
       console.log('Call has ended');
       clearInterval(captureIntervalRef.current);
-      try {
-        const reviewResponse = await fetch('http://127.0.0.1:5001/api/get-review');
-        const data = await reviewResponse.json();
-        setReview(data.review || 'No review was generated.');
-      } catch (error) {
-        console.error('Error fetching review:', error);
-        setReview('Failed to fetch review.');
-      }
+      
+      // We need to use the `transcript` state value as it is at the moment of call end,
+      // so we pass it into a function to avoid issues with stale closures.
+      fetchReview(transcript);
     });
 
     vapi.on('message', (message) => {
@@ -88,13 +86,32 @@ function App() {
     return () => {
       vapi.removeAllListeners();
     };
-  }, [sendFrameForAnalysis]);
+  }, [sendFrameForAnalysis, transcript]);
 
+  const fetchReview = async (finalTranscript) => {
+    setReport({ status: 'loading' });
+    try {
+      const reviewResponse = await fetch('http://127.0.0.1:5001/api/get-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: finalTranscript }),
+      });
+      const data = await reviewResponse.json();
+      if (reviewResponse.ok) {
+        setReport(data);
+      } else {
+        setReport({ summary: data.review?.error || 'Failed to generate report.' });
+      }
+    } catch (error) {
+      console.error('Error fetching review:', error);
+      setReport({ summary: 'Failed to fetch review.' });
+    }
+  };
 
   // Function to start a new call
   const startCall = async () => {
     setCallStatus('loading');
-    setReview(''); // Clear previous review
+    setReport(null);
     try {
       const response = await fetch('http://127.0.0.1:5001/api/vapi-assistant');
       if (!response.ok) throw new Error(`Backend error: ${response.statusText}`);
@@ -109,19 +126,13 @@ function App() {
   };
 
   // Function to stop the call
-  const stopCall = async () => {
+  const stopCall = () => {
     vapi.stop();
-    // Trigger review generation when manually stopping
-    try {
-      const reviewResponse = await fetch('http://127.0.0.1:5001/api/trigger-review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await reviewResponse.json();
-      setReview(data.review || 'No review was generated.');
-    } catch (error) {
-      console.error('Error fetching review:', error);
-      setReview('Failed to fetch review.');
+  };
+
+  const viewReport = () => {
+    if (report) {
+      navigate('/report', { state: { report } });
     }
   };
 
@@ -160,12 +171,19 @@ function App() {
               ref={webcamRef}
               screenshotFormat="image/jpeg"
             />
-            {review && (
-              <div className="review-container">
-                <h2>Post-Call Review</h2>
-                <p>{review}</p>
-              </div>
-            )}
+            <div className="review-container">
+              {report && report.status === 'loading' && (
+                  <p>Generating your report...</p>
+              )}
+              {report && report.overallScore != null && (
+                  <button onClick={viewReport} className="report-button">
+                    View Your Interview Report
+                  </button>
+              )}
+               {report && report.summary && report.overallScore == null && (
+                  <p>{report.summary}</p>
+              )}
+            </div>
           </div>
         </div>
       </header>
