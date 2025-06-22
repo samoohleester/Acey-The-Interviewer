@@ -87,6 +87,8 @@ def get_vapi_assistant():
             voice={
                 "provider": "11labs",
                 "voiceId": "21m00Tcm4TlvDq8ikWAM",
+                "stability": 0.8,
+                "similarityBoost": 0.5
             },
             first_message="What job are you currently interviewing for" if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure.",
         )

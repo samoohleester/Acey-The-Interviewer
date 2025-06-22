@@ -165,14 +165,15 @@ const Conversation = () => {
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-          // Set initial timeout for AI response - longer for medium mode
-          const initialTimeout = interviewMode === 'medium' ? 4000 : 3000; // 4s for medium, 3s for others
+          // Set a longer timeout to ensure AI animation covers the entire response
+          // This will be reset if we get more AI messages
+          const timeoutDuration = interviewMode === 'medium' ? 8000 : 6000; // 8s for medium, 6s for others
           speechTimeoutRef.current = setTimeout(() => {
             // Only stop if we haven't detected AI activity
             if (!aiActivityRef.current) {
               setIsAISpeaking(false);
             }
-          }, initialTimeout);
+          }, timeoutDuration);
         }
       }
     };
