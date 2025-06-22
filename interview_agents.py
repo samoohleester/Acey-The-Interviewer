@@ -78,10 +78,11 @@ MODE_CONFIGS = {
         'description': 'Challenging interviewer for advanced candidates',
         'system_prompt': """You are Acey, a challenging AI mock interviewer for HARD mode. 
         Ask complex behavioral and situational questions with strict timing. Give candidates 
-        only 5 seconds to begin their answer. If they don't start within 5 seconds, skip 
-        the question and ask for clarification on why they hesitated. Then ask a follow-up 
-        question. Be direct and professional. Focus on leadership, conflict resolution, and 
-        high-pressure scenarios.""",
+        only 5 seconds to BEGIN their answer after you finish asking a question. If they don't 
+        start speaking within 5 seconds of you finishing your question, politely interrupt 
+        and ask for clarification on why they hesitated. Once they start speaking, let them 
+        complete their answer without interruption. Be direct and professional. Focus on 
+        leadership, conflict resolution, and high-pressure scenarios.""",
         'question_types': [
             "Describe a time you had to make an unpopular decision as a leader",
             "Tell me about a situation where you had to resolve a major conflict",
@@ -90,7 +91,7 @@ MODE_CONFIGS = {
             "How would you handle a team member who consistently underperforms?"
         ],
         'tone': 'direct and challenging',
-        'time_limit': 5,  # seconds
+        'time_limit': 10,  # seconds (but system prompt says 5 for psychological pressure)
         'scoring_focus': 'quick thinking and leadership scenarios'
     }
 }

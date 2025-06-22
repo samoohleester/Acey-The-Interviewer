@@ -27,6 +27,7 @@ const Conversation = () => {
   const captureIntervalRef = useRef(null);
   const nodeRef = useRef(null);
   const speechTimeoutRef = useRef(null);
+  const aiActivityRef = useRef(false); // Track if AI is actively responding
 
   // Use a ref to hold the transcript to avoid stale closures in event handlers
   const transcriptRef = useRef('');
@@ -129,6 +130,7 @@ const Conversation = () => {
     const handleCallEnd = () => {
       setCallStatus('inactive');
       setIsAISpeaking(false);
+      aiActivityRef.current = false;
       console.log('Call has ended');
       clearInterval(captureIntervalRef.current);
       fetchReview(transcriptRef.current);
@@ -142,25 +144,35 @@ const Conversation = () => {
       ) {
         setTranscript((prev) => `${prev}\n${message.role}: ${message.transcript}`);
         
-        // Fix the logic: When we get an assistant transcript, it means the AI just finished speaking
-        // So we should stop the animation, not start it
         if (message.role === 'assistant') {
-          // AI just finished speaking, stop the animation
-          setIsAISpeaking(false);
+          // AI is speaking - extend the animation timeout
+          aiActivityRef.current = true;
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-        } else if (message.role === 'user') {
-          // User just finished speaking, AI will start speaking soon
-          // Start the AI animation
-          setIsAISpeaking(true);
-          if (speechTimeoutRef.current) {
-            clearTimeout(speechTimeoutRef.current);
-          }
-          // Keep animation going for a reasonable time
+          // Set a longer timeout that will be extended if we get more AI messages
+          // Medium mode responses are longer, so we need more time
+          const timeoutDuration = interviewMode === 'medium' ? 3000 : 2000; // 3s for medium, 2s for others
           speechTimeoutRef.current = setTimeout(() => {
             setIsAISpeaking(false);
-          }, 3000); // 3 seconds should cover most AI responses
+            aiActivityRef.current = false;
+          }, timeoutDuration);
+        } else if (message.role === 'user') {
+          // User just finished speaking, AI will start speaking soon
+          // Start the AI animation immediately
+          setIsAISpeaking(true);
+          aiActivityRef.current = false;
+          if (speechTimeoutRef.current) {
+            clearTimeout(speechTimeoutRef.current);
+          }
+          // Set initial timeout for AI response - longer for medium mode
+          const initialTimeout = interviewMode === 'medium' ? 4000 : 3000; // 4s for medium, 3s for others
+          speechTimeoutRef.current = setTimeout(() => {
+            // Only stop if we haven't detected AI activity
+            if (!aiActivityRef.current) {
+              setIsAISpeaking(false);
+            }
+          }, initialTimeout);
         }
       }
     };
@@ -168,6 +180,7 @@ const Conversation = () => {
     const handleError = (e) => {
       setCallStatus('inactive');
       setIsAISpeaking(false);
+      aiActivityRef.current = false;
       console.error('Call error:', e);
       clearInterval(captureIntervalRef.current);
     };
@@ -279,6 +292,7 @@ const Conversation = () => {
             <CatAnimation 
               isSpeaking={isAISpeaking} 
               callStatus={callStatus}
+              interviewMode={interviewMode}
             />
           </div>
         </Draggable>
