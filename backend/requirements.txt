@@ -1,8 +1,9 @@
 Flask==2.3.3
 Flask-Cors==4.0.0
-vapi-server-sdk
+vapi-server-sdk==1.5.1
 google-generativeai==0.3.2
 python-dotenv==1.0.0
 Pillow==10.0.1
 requests==2.31.0
-beautifulsoup4==4.12.2 
+beautifulsoup4==4.12.2
+uagents==0.10.0 

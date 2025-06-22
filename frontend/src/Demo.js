@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { auth } from './firebaseConfig';
-import { signOut } from 'firebase/auth';
 import './Demo.css';
 
 const Demo = () => {
@@ -12,10 +10,40 @@ const Demo = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [jobDescription, setJobDescription] = useState('');
-  const [jobAnalysis, setJobAnalysis] = useState(null);
   const [isAnalyzingJob, setIsAnalyzingJob] = useState(false);
+  const [jobAnalysis, setJobAnalysis] = useState(null);
+  const [jobDescriptionHovered, setJobDescriptionHovered] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const analyzeJobDescription = async (description) => {
+    setIsAnalyzingJob(true);
+    setJobAnalysis(null);
+    
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/analyze-job-description', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobDescription: description }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setJobAnalysis(data);
+      } else {
+        console.error('Failed to analyze job description');
+        setJobAnalysis({ error: data.error || 'Failed to analyze job description' });
+      }
+    } catch (error) {
+      console.error('Error analyzing job description:', error);
+      setJobAnalysis({ error: 'Error analyzing job description. Please try again.' });
+    } finally {
+      setIsAnalyzingJob(false);
+    }
+  };
 
   const handleSelect = (difficulty) => {
     if (selection === difficulty) {
@@ -50,32 +78,6 @@ const Demo = () => {
     setSessionName('');
   };
 
-  const analyzeJobDescription = async (description) => {
-    setIsAnalyzingJob(true);
-    try {
-      const response = await fetch('http://127.0.0.1:5001/api/analyze-job-description', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobDescription: description }),
-      });
-
-      if (response.ok) {
-        const analysis = await response.json();
-        setJobAnalysis(analysis);
-      } else {
-        console.error('Failed to analyze job description');
-        setJobAnalysis({ error: 'Failed to analyze job description' });
-      }
-    } catch (error) {
-      console.error('Error analyzing job description:', error);
-      setJobAnalysis({ error: 'Error analyzing job description' });
-    } finally {
-      setIsAnalyzingJob(false);
-    }
-  };
-
   const handleLinkClick = (e, path) => {
     if (location.pathname === '/demo/conversation') {
       e.preventDefault();
@@ -100,15 +102,6 @@ const Demo = () => {
     setPendingNavigation(null);
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
   const selectionState = {
     sessionName,
     setSessionName,
@@ -125,10 +118,11 @@ const Demo = () => {
     clearSessionName,
     jobDescription,
     setJobDescription,
-    jobAnalysis,
-    setJobAnalysis,
     isAnalyzingJob,
     analyzeJobDescription,
+    jobAnalysis,
+    jobDescriptionHovered,
+    setJobDescriptionHovered,
   };
 
   return (
@@ -136,17 +130,7 @@ const Demo = () => {
       <div className="top-bar">
         <div className="logo-container">
           <div className="logo-icon">
-            <img
-              src="/logo/acey-logo.png"
-              alt="Acey Logo"
-              className="logo-image"
-              onError={(e) => {
-                // Hide image and show fallback if logo doesn't load
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'block';
-              }}
-            />
-            <div className="logo-fallback"></div>
+            <img src="/logo/acey-logo.png" alt="Acey Logo" className="logo-image" />
           </div>
           <span className="logo-text">Acey</span>
         </div>
@@ -154,8 +138,8 @@ const Demo = () => {
       <div className="content-area">
         <div className="sidebar">
           <div className="sidebar-top">
-            <Link
-              to="/demo"
+            <Link 
+              to="/demo" 
               className="new-chat-button"
               onClick={(e) => handleLinkClick(e, '/demo')}
             >
@@ -173,15 +157,15 @@ const Demo = () => {
               <Link to="/demo/support" onClick={(e) => handleLinkClick(e, '/demo/support')} className={location.pathname === '/demo/support' ? 'active' : ''}>Support</Link>
             </nav>
             <div className="sidebar-separator"></div>
-            <button onClick={handleSignOut} className="sign-out-btn">Sign Out</button>
+            <a href="/logout" className="sign-out-btn">Sign Out</a>
           </div>
         </div>
         <div className="main-content">
           <Outlet context={selectionState} />
         </div>
       </div>
-
-      {/* Confirmation Modal */}
+      
+   
       {showConfirmModal && (
         <div className="modal-overlay" onClick={cancelNavigation}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

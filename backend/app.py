@@ -1,6 +1,11 @@
 import os
-import base64
+import sys
 from io import BytesIO
+
+# Add parent directory to path to import interview_agents and other root modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import base64
 from PIL import Image
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -13,9 +18,22 @@ import json
 import re
 import requests
 from bs4 import BeautifulSoup
-from agent_client import get_followup_from_agent
-from interview_agents import MODE_CONFIGS
 
+# Try to import agent_client, but make it optional
+try:
+    from agent_client import get_followup_from_agent
+    AGENT_AVAILABLE = True
+except ImportError:
+    print("Warning: agent_client not available. Agent features will be disabled.")
+    AGENT_AVAILABLE = False
+
+try:
+    from interview_agents import MODE_CONFIGS
+    MODE_CONFIGS_AVAILABLE = True
+except ImportError:
+    print("Warning: interview_agents not available. Using fallback configurations.")
+    MODE_CONFIGS_AVAILABLE = False
+    MODE_CONFIGS = {}
 
 NGROK_URL = os.getenv("NGROK_URL", "YOUR_NGROK_HTTPS_URL_HERE")
 
@@ -27,11 +45,25 @@ app = Flask(__name__)
 CORS(app)
 
 
-vapi = Vapi(token=os.environ.get('VAPI_API_KEY'))
+# Global variable to store current job analysis
+current_job_analysis = None
 
-genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Check if required API keys are available
+VAPI_API_KEY = os.environ.get('VAPI_API_KEY')
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 
+if VAPI_API_KEY:
+    vapi = Vapi(token=VAPI_API_KEY)
+else:
+    print("Warning: VAPI_API_KEY not found. Voice features will be disabled.")
+    vapi = None
+
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+else:
+    print("Warning: GOOGLE_API_KEY not found. AI analysis features will be disabled.")
+    model = None
 
 frame_analyses = []
 
@@ -389,6 +421,9 @@ def get_review():
 @app.route('/api/agent-followup', methods=['POST'])
 def agent_followup():
     """Get a follow-up question from the appropriate agent based on user's answer"""
+    if not AGENT_AVAILABLE:
+        return jsonify({'error': 'Agent features are not available. Please install required dependencies.'}), 503
+    
     data = request.get_json()
     mode = data.get('mode', 'easy')
     answer = data.get('answer')
@@ -421,17 +456,57 @@ def analyze_job_description():
         return jsonify({"error": "No job description provided"}), 400
 
     try:
+        print(f"Received job description request. Length: {len(job_description)} characters")
+        
         # Check if it's a LinkedIn URL
         if 'linkedin.com/jobs' in job_description:
+            print("Detected LinkedIn URL, attempting to extract content...")
             # Extract content from LinkedIn URL
             job_content = extract_linkedin_content(job_description)
+            
+            # Check if the extraction failed
+            if job_content.startswith("Error") or job_content.startswith("Invalid") or job_content.startswith("LinkedIn job posting content could not be extracted"):
+                print(f"LinkedIn extraction failed: {job_content}")
+                
+                # Try to extract basic info from the URL itself
+                try:
+                    # Extract job title from URL if possible
+                    url_parts = job_description.split('/')
+                    job_title = None
+                    for i, part in enumerate(url_parts):
+                        if part == 'jobs' and i + 1 < len(url_parts):
+                            job_title = url_parts[i + 1].replace('-', ' ').title()
+                            break
+                    
+                    if job_title:
+                        fallback_content = f"Job Title: {job_title}\n\nThis appears to be a LinkedIn job posting. The detailed description could not be extracted due to LinkedIn's security measures. Please copy and paste the job description text directly for a more detailed analysis."
+                    else:
+                        fallback_content = "LinkedIn job posting. The detailed description could not be extracted due to LinkedIn's security measures. Please copy and paste the job description text directly for a more detailed analysis."
+                    
+                    print("Providing fallback analysis based on URL")
+                    analysis = analyze_job_content(fallback_content)
+                    if not analysis.get('error'):
+                        analysis['warning'] = "Limited analysis due to LinkedIn extraction issues. For better results, copy the job description text directly."
+                        return jsonify(analysis)
+                except Exception as fallback_error:
+                    print(f"Fallback analysis also failed: {fallback_error}")
+                
+                return jsonify({"error": job_content}), 400
         else:
+            print("Using provided text directly")
             # Use the provided text directly
             job_content = job_description
 
+        print(f"Job content length: {len(job_content)} characters")
+        
         # Analyze the job content using AI
         analysis = analyze_job_content(job_content)
         
+        if analysis.get('error'):
+            print(f"AI analysis failed: {analysis['error']}")
+            return jsonify({"error": analysis['error']}), 500
+        
+        print("Job analysis completed successfully")
         return jsonify(analysis)
     except Exception as e:
         print(f"Error analyzing job description: {e}")
@@ -442,12 +517,24 @@ def analyze_job_description():
 def extract_linkedin_content(url):
     """Extract job description content from LinkedIn URL"""
     try:
+        # Validate URL format
+        if not url.startswith('http'):
+            return "Invalid URL format. Please provide a complete LinkedIn job URL."
+        
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
         }
-        response = requests.get(url, headers=headers, timeout=10)
+        
+        print(f"Attempting to fetch LinkedIn URL: {url}")
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         
+        print(f"Successfully fetched LinkedIn page, status: {response.status_code}")
         soup = BeautifulSoup(response.content, 'html.parser')
         
         # Try multiple selectors for job description content
@@ -459,41 +546,104 @@ def extract_linkedin_content(url):
             '.job-details',
             '.job-description__content',
             '.show-more-less-html__markup',
-            '.job-description__text'
+            '.job-description__text',
+            '.job-description__content--rich-text',
+            'div[class*="job-description"]',
+            'div[class*="description"]',
+            'div[class*="content"]',
+            'section[class*="job-description"]',
+            'section[class*="description"]',
+            'section[class*="content"]',
         ]
         
-        for selector in selectors:
-            element = soup.select_one(selector)
-            if element:
-                text = element.get_text(strip=True)
-                if len(text) > 50:  # Ensure we got meaningful content
-                    return text
+        print(f"Trying {len(selectors)} different selectors to find job description content...")
+        
+        for i, selector in enumerate(selectors):
+            try:
+                element = soup.select_one(selector)
+                if element:
+                    text = element.get_text(strip=True)
+                    if len(text) > 50:  # Ensure we got meaningful content
+                        print(f"Found content using selector {i+1}: {selector}")
+                        print(f"Content length: {len(text)} characters")
+                        return text
+            except Exception as e:
+                print(f"Error with selector {selector}: {e}")
+                continue
         
         # If no specific job description found, try to get the page title and any visible text
+        print("No specific job description found, trying to extract general page content...")
         title = soup.find('title')
         if title:
             title_text = title.get_text(strip=True)
+            print(f"Found page title: {title_text}")
+            
             # Also try to get any paragraph content
             paragraphs = soup.find_all('p')
-            paragraph_text = ' '.join([p.get_text(strip=True) for p in paragraphs[:5]])
+            paragraph_text = ' '.join([p.get_text(strip=True) for p in paragraphs[:10]])
             
             if paragraph_text:
-                return f"{title_text}\n\n{paragraph_text}"
+                combined_text = f"{title_text}\n\n{paragraph_text}"
+                print(f"Combined content length: {len(combined_text)} characters")
+                return combined_text
             else:
+                print("No paragraph content found, returning title only")
                 return title_text
         
-        return "LinkedIn job posting content could not be extracted. Please try copying the job description text directly."
+        # Try to find any text content that might be job-related
+        print("Trying to find any job-related content...")
+        all_text = soup.get_text()
+        if len(all_text) > 100:
+            # Look for common job-related keywords
+            job_keywords = ['responsibilities', 'requirements', 'qualifications', 'experience', 'skills', 'duties', 'role', 'position']
+            lines = all_text.split('\n')
+            relevant_lines = []
+            
+            for line in lines:
+                line = line.strip()
+                if any(keyword in line.lower() for keyword in job_keywords) and len(line) > 20:
+                    relevant_lines.append(line)
+            
+            if relevant_lines:
+                content = '\n'.join(relevant_lines[:20])  # Limit to first 20 relevant lines
+                print(f"Found {len(relevant_lines)} relevant lines")
+                return content
         
+        print("Could not extract meaningful content from LinkedIn page")
+        return "LinkedIn job posting content could not be extracted. This might be due to LinkedIn's anti-scraping measures. Please try copying the job description text directly instead of using the LinkedIn URL."
+        
+    except requests.exceptions.Timeout:
+        print("Request timeout when accessing LinkedIn URL")
+        return "Request timeout when accessing LinkedIn URL. The page might be taking too long to load. Please try copying the job description text directly."
+    except requests.exceptions.ConnectionError:
+        print("Connection error when accessing LinkedIn URL")
+        return "Connection error when accessing LinkedIn URL. Please check your internet connection and try again, or copy the job description text directly."
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP error when accessing LinkedIn URL: {e}")
+        if e.response.status_code == 403:
+            return "Access denied by LinkedIn. This might be due to LinkedIn's anti-scraping measures. Please try copying the job description text directly."
+        elif e.response.status_code == 404:
+            return "LinkedIn job posting not found. The URL might be invalid or the job posting might have been removed. Please check the URL or copy the job description text directly."
+        else:
+            return f"HTTP error ({e.response.status_code}) when accessing LinkedIn URL. Please try copying the job description text directly."
     except requests.exceptions.RequestException as e:
         print(f"Request error extracting LinkedIn content: {e}")
-        return "Error accessing LinkedIn URL. Please try copying the job description text directly."
+        return "Error accessing LinkedIn URL. Please try copying the job description text directly instead of using the LinkedIn URL."
     except Exception as e:
         print(f"Error extracting LinkedIn content: {e}")
+        import traceback
+        traceback.print_exc()
         return "Error extracting content from LinkedIn URL. Please try copying the job description text directly."
 
 def analyze_job_content(content):
     """Analyze job content using AI to extract key information"""
     try:
+        # Check if Google API key is available
+        if not model:
+            # Fallback analysis without AI
+            print("Using fallback job analysis (no AI)")
+            return fallback_job_analysis(content)
+        
         # Limit content length to avoid token limits
         if len(content) > 4000:
             content = content[:4000] + "..."
@@ -538,15 +688,7 @@ def analyze_job_content(content):
             print(f"JSON parsing error: {e}")
             print(f"Raw response: {cleaned_response}")
             # Return a fallback analysis
-            return {
-                "role": "Job Role",
-                "company": "Company",
-                "keyResponsibilities": "Responsibilities will be assessed during the interview",
-                "requiredSkills": "Skills will be evaluated during the interview",
-                "experienceLevel": "Not specified",
-                "industry": "Not specified",
-                "interviewFocus": "Focus on general interview skills and experience"
-            }
+            return fallback_job_analysis(content)
         
         # Store the analysis for use in interview generation
         global current_job_analysis
@@ -558,18 +700,76 @@ def analyze_job_content(content):
         print(f"Error analyzing job content: {e}")
         import traceback
         traceback.print_exc()
-        return {
-            "role": "Job Role",
-            "company": "Company",
-            "keyResponsibilities": "Responsibilities will be assessed during the interview",
-            "requiredSkills": "Skills will be evaluated during the interview",
-            "experienceLevel": "Not specified",
-            "industry": "Not specified",
-            "interviewFocus": "Focus on general interview skills and experience"
-        }
+        return fallback_job_analysis(content)
 
-# Global variable to store current job analysis
-current_job_analysis = None
+def fallback_job_analysis(content):
+    """Simple fallback job analysis without AI"""
+    content_lower = content.lower()
+    
+    # Extract basic information using simple text analysis
+    role = "Job Role"
+    company = "Company"
+    key_responsibilities = "Responsibilities will be assessed during the interview"
+    required_skills = "Skills will be evaluated during the interview"
+    experience_level = "Not specified"
+    industry = "Not specified"
+    interview_focus = "Focus on general interview skills and experience"
+    
+    # Try to extract role from common patterns
+    role_keywords = ['engineer', 'developer', 'manager', 'analyst', 'specialist', 'coordinator', 'assistant', 'director', 'lead', 'architect']
+    for keyword in role_keywords:
+        if keyword in content_lower:
+            role = f"{keyword.title()} Position"
+            break
+    
+    # Try to extract company name
+    if 'at ' in content_lower:
+        parts = content.split(' at ')
+        if len(parts) > 1:
+            company_part = parts[1].split()[0]
+            if len(company_part) > 2:
+                company = company_part.title()
+    
+    # Try to extract experience level
+    if 'senior' in content_lower:
+        experience_level = "Senior"
+    elif 'junior' in content_lower or 'entry' in content_lower:
+        experience_level = "Junior"
+    elif 'mid' in content_lower or 'intermediate' in content_lower:
+        experience_level = "Mid"
+    
+    # Try to extract industry
+    industry_keywords = {
+        'tech': 'Technology',
+        'software': 'Technology',
+        'healthcare': 'Healthcare',
+        'finance': 'Finance',
+        'marketing': 'Marketing',
+        'sales': 'Sales',
+        'education': 'Education',
+        'consulting': 'Consulting'
+    }
+    
+    for keyword, industry_name in industry_keywords.items():
+        if keyword in content_lower:
+            industry = industry_name
+            break
+    
+    analysis = {
+        "role": role,
+        "company": company,
+        "keyResponsibilities": key_responsibilities,
+        "requiredSkills": required_skills,
+        "experienceLevel": experience_level,
+        "industry": industry,
+        "interviewFocus": interview_focus
+    }
+    
+    # Store the analysis for use in interview generation
+    global current_job_analysis
+    current_job_analysis = analysis
+    
+    return analysis
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001) 
