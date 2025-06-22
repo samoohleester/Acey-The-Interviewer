@@ -64,6 +64,7 @@ html {
   font-size: 18px;
   color: #a0a0a0;
   font-style: italic;
+  text-shadow: 0 0 8px rgba(87, 165, 255, 0.5);
 }
 
 .user-settings {
@@ -170,20 +171,33 @@ html {
 }
 
 .main-content header {
-  position: absolute;
-  top: 40px;
-  left: 40px;
-  z-index: 10;
   text-align: left;
+  margin-bottom: 40px;
 }
 
-.main-content header h1 {
+.main-content header h1.animated-heading {
   font-size: 36px;
   margin: 0;
+  background: linear-gradient(to right, #57A5FF 20%, #FFFFFF 50%, #57A5FF 80%);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: horizontal-highlight 3s linear infinite;
+}
+
+@keyframes horizontal-highlight {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
 }
 
 .difficulty-subtitle {
-  font-size: 16px;
+  font-size: 14px;
   color: #a0a0a0;
   margin-top: 8px;
   font-weight: 400;
@@ -237,7 +251,6 @@ html {
   align-items: flex-start;
   justify-content: flex-start;
   box-sizing: border-box;
-  margin-top: 40px;
   margin-left: 0;
   padding-left: 0;
   width: 100%;

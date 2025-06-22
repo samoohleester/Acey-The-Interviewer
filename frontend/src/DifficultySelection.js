@@ -1,11 +1,10 @@
 import React from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import DifficultyDetails from './DifficultyDetails';
 import CustomDifficultyDetails from './CustomDifficultyDetails';
 import './Demo.css';
 
 const DifficultySelection = () => {
-  const navigate = useNavigate();
   const {
     selection,
     hovered,
@@ -20,10 +19,6 @@ const DifficultySelection = () => {
 
   return (
     <>
-      <header>
-        <h1>Choose What Works Best for You</h1>
-        <p className="difficulty-subtitle">Pick a difficulty level to start your mock interview. Each level adjusts the question type, time pressure, and AI behavior.</p>
-      </header>
       <div
         className={`difficulty-selection ${effectiveSelection ? `hover-${effectiveSelection}` : ''} ${selection ? `selected-${effectiveSelection}` : ''}`}
       >

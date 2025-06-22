@@ -131,6 +131,12 @@ const Demo = () => {
           </div>
         </div>
         <div className="main-content">
+          {location.pathname === '/demo' && (
+            <header>
+              <h1 className="animated-heading">Choose What Works Best for You</h1>
+              <p className="difficulty-subtitle">Pick a difficulty level to start your mock interview. Each level adjusts the question type, time pressure, and AI behavior.</p>
+            </header>
+          )}
           <Outlet context={selectionState} />
         </div>
       </div>
