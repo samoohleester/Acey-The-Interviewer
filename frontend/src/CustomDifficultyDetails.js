@@ -15,12 +15,12 @@ const questionTypes = [
 
 const timeLimits = [
     'No Time Limit',
-    '30 seconds per answer',
-    '15 seconds per answer',
-    '10 seconds per answer',
     '5 seconds per answer',
-    '2 minutes per answer',
-    '1 minute per answer'
+    '10 seconds per answer',
+    '15 seconds per answer',
+    '30 seconds per answer',
+    '1 minute per answer',
+    '2 minutes per answer'
 ];
 
 const curveballs = [
@@ -181,6 +181,8 @@ const CustomDifficultyDetails = ({ chatName, onChatNameChange }) => {
                     )}
                 </div>
             </div>
+
+            <button className="more-btn" onClick={() => navigate('/job-analysis')}>More</button>
 
             {inputValue.trim() && (
                 <button className="continue-btn" onClick={handleContinue}>

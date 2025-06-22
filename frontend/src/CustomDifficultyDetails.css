@@ -203,3 +203,22 @@
         max-height: 100px;
     }
 }
+
+.more-btn {
+    background-color: transparent;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #a0a0a0;
+    padding: 4px 8px;
+    font-size: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+    align-self: flex-start;
+    transition: all 0.3s ease;
+}
+
+.more-btn:hover {
+    background-color: #3a3a3a;
+    border-color: #777;
+    color: #fff;
+}

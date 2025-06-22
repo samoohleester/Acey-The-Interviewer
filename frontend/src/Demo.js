@@ -9,41 +9,8 @@ const Demo = () => {
   const [recentlyDeselected, setRecentlyDeselected] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
-  const [jobDescription, setJobDescription] = useState('');
-  const [isAnalyzingJob, setIsAnalyzingJob] = useState(false);
-  const [jobAnalysis, setJobAnalysis] = useState(null);
-  const [jobDescriptionHovered, setJobDescriptionHovered] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-
-  const analyzeJobDescription = async (description) => {
-    setIsAnalyzingJob(true);
-    setJobAnalysis(null);
-    
-    try {
-      const response = await fetch('http://127.0.0.1:5001/api/analyze-job-description', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobDescription: description }),
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        setJobAnalysis(data);
-      } else {
-        console.error('Failed to analyze job description');
-        setJobAnalysis({ error: data.error || 'Failed to analyze job description' });
-      }
-    } catch (error) {
-      console.error('Error analyzing job description:', error);
-      setJobAnalysis({ error: 'Error analyzing job description. Please try again.' });
-    } finally {
-      setIsAnalyzingJob(false);
-    }
-  };
 
   const handleSelect = (difficulty) => {
     if (selection === difficulty) {
@@ -116,13 +83,6 @@ const Demo = () => {
     handleMouseLeave,
     handleSessionNameChange,
     clearSessionName,
-    jobDescription,
-    setJobDescription,
-    isAnalyzingJob,
-    analyzeJobDescription,
-    jobAnalysis,
-    jobDescriptionHovered,
-    setJobDescriptionHovered,
   };
 
   return (
@@ -134,16 +94,26 @@ const Demo = () => {
           </div>
           <span className="logo-text">Acey</span>
         </div>
+        <div className="powered-by">
+          Powered by - Gemini, VAPI & Fetch.ai
+        </div>
       </div>
       <div className="content-area">
         <div className="sidebar">
           <div className="sidebar-top">
-            <Link 
-              to="/demo" 
+            <Link
+              to="/demo"
               className="new-chat-button"
               onClick={(e) => handleLinkClick(e, '/demo')}
             >
               New Chat
+            </Link>
+            <Link
+              to="/job-analysis"
+              className="job-analysis-button"
+              onClick={(e) => handleLinkClick(e, '/job-analysis')}
+            >
+              Job Analysis Interview
             </Link>
             <nav>
               <Link to="/demo/history" onClick={(e) => handleLinkClick(e, '/demo/history')} className={location.pathname === '/demo/history' ? 'active' : ''}>Chat History</Link>
@@ -164,8 +134,8 @@ const Demo = () => {
           <Outlet context={selectionState} />
         </div>
       </div>
-      
-   
+
+
       {showConfirmModal && (
         <div className="modal-overlay" onClick={cancelNavigation}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

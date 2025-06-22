@@ -26,12 +26,11 @@ const DifficultyDetails = ({ difficulty, chatName, onChatNameChange }) => {
   const details = detailsMap[difficulty];
 
   useEffect(() => {
-    // Only set input value if there's a saved chatName (when card is reselected)
     if (chatName) {
       setInputValue(chatName);
     }
   }, [chatName]);
-  
+
   if (!details) return null;
 
   const handleContinue = () => {
@@ -43,9 +42,9 @@ const DifficultyDetails = ({ difficulty, chatName, onChatNameChange }) => {
     <div className="difficulty-details" onClick={(e) => e.stopPropagation()}>
       <div className="form-row">
         <label htmlFor={`sessionName-${difficulty}`}>Session Name:</label>
-        <input 
-          type="text" 
-          id={`sessionName-${difficulty}`} 
+        <input
+          type="text"
+          id={`sessionName-${difficulty}`}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Enter session name..."
