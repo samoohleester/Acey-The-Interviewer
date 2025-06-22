@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './CatAnimation.css';
 
-const CatAnimation = ({ isSpeaking, callStatus }) => {
+const CatAnimation = ({ isSpeaking, callStatus, interviewMode }) => {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isIdle, setIsIdle] = useState(false);
   const animationRef = useRef(null);
@@ -138,9 +138,11 @@ const CatAnimation = ({ isSpeaking, callStatus }) => {
           {isIdle && <span className="idle-indicator">👂</span>}
         </div>
       </div>
-      <div className="cat-status">
-        {isSpeaking ? 'AI Speaking...' : isIdle ? 'Listening...' : 'Ready...'}
-      </div>
+      {interviewMode !== 'medium' && (
+        <div className="cat-status">
+          {isSpeaking ? 'AI Speaking...' : isIdle ? 'Listening...' : 'Ready...'}
+        </div>
+      )}
     </div>
   );
 };
