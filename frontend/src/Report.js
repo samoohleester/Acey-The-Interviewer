@@ -34,6 +34,45 @@ const Report = () => {
         )}
       </div>
 
+      {report.scoringBreakdown && (
+        <div className="scoring-breakdown">
+          <h3>Score Breakdown</h3>
+          <div className="breakdown-container">
+            <div className="breakdown-section">
+              <h4>Base Score</h4>
+              <p className="base-score">{report.scoringBreakdown.baseScore} points</p>
+            </div>
+            
+            {report.scoringBreakdown.bonuses && report.scoringBreakdown.bonuses.length > 0 && (
+              <div className="breakdown-section bonuses">
+                <h4>Points Earned</h4>
+                <ul>
+                  {report.scoringBreakdown.bonuses.map((bonus, index) => (
+                    <li key={index} className="bonus-item">{bonus}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {report.scoringBreakdown.deductions && report.scoringBreakdown.deductions.length > 0 && (
+              <div className="breakdown-section deductions">
+                <h4>Points Lost</h4>
+                <ul>
+                  {report.scoringBreakdown.deductions.map((deduction, index) => (
+                    <li key={index} className="deduction-item">{deduction}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <div className="breakdown-section final">
+              <h4>Final Score</h4>
+              <p className="final-score">{report.scoringBreakdown.finalScore || report.overallScore} / 100</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="feedback-section">
         <div className="feedback-card good">
           <h3>What You Did Well</h3>

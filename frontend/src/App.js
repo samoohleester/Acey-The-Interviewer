@@ -12,6 +12,7 @@ function App() {
   const [callStatus, setCallStatus] = useState('inactive');
   const [transcript, setTranscript] = useState('');
   const [report, setReport] = useState(null);
+  const [interviewMode, setInterviewMode] = useState('easy');
   const webcamRef = useRef(null);
   const captureIntervalRef = useRef(null);
   const navigate = useNavigate();
@@ -65,7 +66,10 @@ function App() {
       const reviewResponse = await fetch('http://127.0.0.1:5001/api/get-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: finalTranscript }),
+        body: JSON.stringify({ 
+          transcript: finalTranscript,
+          mode: interviewMode 
+        }),
       });
       const data = await reviewResponse.json();
       if (reviewResponse.ok) {
@@ -77,7 +81,7 @@ function App() {
       console.error('Error fetching review:', error);
       setReport({ summary: 'Failed to fetch review.' });
     }
-  }, []);
+  }, [interviewMode]);
 
   useEffect(() => {
     const handleCallStart = () => {
@@ -129,7 +133,7 @@ function App() {
     setCallStatus('loading');
     setReport(null);
     try {
-      const response = await fetch('http://127.0.0.1:5001/api/vapi-assistant');
+      const response = await fetch(`http://127.0.0.1:5001/api/vapi-assistant?mode=${interviewMode}`);
       if (!response.ok) throw new Error(`Backend error: ${response.statusText}`);
       const { assistantId } = await response.json();
       if (!assistantId) throw new Error('Assistant ID not received from backend.');
@@ -160,7 +164,46 @@ function App() {
           <div className="conversation-container">
             <div className="status-container">
               <p>Call Status: {callStatus}</p>
+              <p>Interview Mode: {interviewMode.toUpperCase()}</p>
             </div>
+            
+            {callStatus === 'inactive' && (
+              <div className="mode-selection">
+                <h3>Select Interview Difficulty:</h3>
+                <div className="mode-buttons">
+                  <button 
+                    className={`mode-btn ${interviewMode === 'easy' ? 'active' : ''}`}
+                    onClick={() => setInterviewMode('easy')}
+                  >
+                    Easy
+                  </button>
+                  <button 
+                    className={`mode-btn ${interviewMode === 'medium' ? 'active' : ''}`}
+                    onClick={() => setInterviewMode('medium')}
+                  >
+                    Medium
+                  </button>
+                  <button 
+                    className={`mode-btn ${interviewMode === 'hard' ? 'active' : ''}`}
+                    onClick={() => setInterviewMode('hard')}
+                  >
+                    Hard
+                  </button>
+                </div>
+                <div className="mode-description">
+                  {interviewMode === 'easy' && (
+                    <p>Common questions, relaxed pace, great for beginners</p>
+                  )}
+                  {interviewMode === 'medium' && (
+                    <p>Behavioral questions, 15-second time limit per answer</p>
+                  )}
+                  {interviewMode === 'hard' && (
+                    <p>Complex scenarios, 5-second start time, high pressure</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <div className="button-container">
               {callStatus !== 'active' ? (
                 <button onClick={startCall} disabled={callStatus === 'loading'}>

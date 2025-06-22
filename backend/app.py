@@ -47,16 +47,35 @@ def get_data():
 
 @app.route('/api/vapi-assistant')
 def get_vapi_assistant():
+    # Get the interview mode from query parameters, default to 'easy'
+    mode = request.args.get('mode', 'easy')
+    
     # Clear previous analyses and reset rate limit flag for a new call
     frame_analyses.clear()
     global rate_limit_hit
     rate_limit_hit = False
     
-    print("=== CREATING NEW ASSISTANT ===")
+    print(f"=== CREATING NEW ASSISTANT WITH MODE: {mode} ===")
     try:
         # Use timestamp to ensure unique assistant name
         timestamp = int(time.time())
-        assistant_name = f"Direct-Interviewer-{timestamp}"
+        assistant_name = f"Direct-Interviewer-{mode}-{timestamp}"
+        
+        # Define system prompts for different modes
+        mode_prompts = {
+            'easy': {
+                "role": "system",
+                "content": "You are Acey, a friendly AI mock interviewer for EASY mode. Ask common, straightforward interview questions. Begin with a warm greeting and ask the candidate to introduce themselves. Speak clearly and with confidence. Keep responses natural, under 10 words, and ask one question at a time. Focus on basic questions about experience, skills, and background. Be encouraging and supportive."
+            },
+            'medium': {
+                "role": "system", 
+                "content": "You are Acey, a professional AI mock interviewer for MEDIUM mode. Ask behavioral and situational questions. Begin with a brief greeting, then dive into structured behavioral questions. Give candidates 15 seconds to answer each question. If they exceed 15 seconds, politely interrupt and move to the next question. Ask follow-up questions to get specific examples. Focus on STAR method responses and problem-solving scenarios."
+            },
+            'hard': {
+                "role": "system",
+                "content": "You are Acey, a challenging AI mock interviewer for HARD mode. Ask complex behavioral and situational questions with strict timing. Give candidates only 5 seconds to begin their answer. If they don't start within 5 seconds, skip the question and ask for clarification on why they hesitated. Then ask a follow-up question. Be direct and professional. Focus on leadership, conflict resolution, and high-pressure scenarios."
+            }
+        }
         
         assistant = vapi.assistants.create(
             name=assistant_name,
@@ -70,23 +89,18 @@ def get_vapi_assistant():
                 "provider": "google",
                 "model": "gemini-1.5-flash",
                 "temperature": 0.0,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are Acey, a structured, professional AI mock interviewer. Begin with a warm, short greeting. Start by asking the candidate to introduce themselves. Speak clearly and with confidence. Avoid filler words like 'um', 'uh', or 'well'. Keep responses natural, under 10 words, and ask one concise question at a time. Follow a realistic interview format: Introduction, Main Questions, Wrap-Up.",
-                    }
-                ],
+                "messages": [mode_prompts[mode]],
             },
             voice={
                 "provider": "11labs",
                 "voiceId": "21m00Tcm4TlvDq8ikWAM",
             },
-            first_message="Tell me about a recent project.",
+            first_message="Tell me about a recent project." if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure.",
         )
         
         current_assistant_id = assistant.id
-        print(f"Assistant created successfully with ID: {assistant.id}, Name: {assistant_name}")
-        return jsonify({"assistantId": assistant.id})
+        print(f"Assistant created successfully with ID: {assistant.id}, Name: {assistant_name}, Mode: {mode}")
+        return jsonify({"assistantId": assistant.id, "mode": mode})
     except Exception as e:
         print(f"ERROR creating assistant: {e}")
         import traceback
@@ -151,6 +165,7 @@ def analyze_frame():
 def get_review():
     data = request.get_json()
     transcript = data.get('transcript')
+    mode = data.get('mode', 'easy')  # Default to easy if not provided
 
     if not transcript and not frame_analyses:
         return jsonify({"review": {"error": "No data available for review. The call may have been too short."}})
@@ -184,22 +199,63 @@ def get_review():
       "areasForImprovement": ["Point 1 about what to improve.", "Point 2 about what to improve."],
       "overallScore": <an integer score from 1 to 100>,
       "scoreExplanation": "A brief, one-sentence explanation of the score, noting how verbal and non-verbal factors were weighted. Example: 'Your body language was strong, but the score was impacted by a lack of structured answers.'",
+      "scoringBreakdown": {{
+        "baseScore": 100,
+        "bonuses": ["+5 points for effective STAR method usage", "+3 points for strong eye contact"],
+        "deductions": ["-2 points for repeated 'um' usage", "-5 points for exceeding time limits"],
+        "finalScore": <calculated final score>
+      }},
       "summary": "A brief, one-paragraph summary of the feedback."
     }}
     
-    IMPORTANT SCORING RULES:
-    - Start with a base score of 100 points
-    - For filler words (um, uh, oh, uhm, etc.), only deduct 1 point per occurrence IF the same filler word is used repeatedly between sentences
-    - Do NOT penalize for occasional, natural filler words within a single sentence
-    - Only count it as a deduction if the candidate uses the same filler word multiple times as sentence transitions
-    - Example: "Um, I worked on a project. Um, it was challenging. Um, I learned a lot." = 3 point deduction (97/100)
-    - Example: "I um worked on a project. It was challenging. I learned a lot." = 0 point deduction (100/100)
+    MODE-SPECIFIC SCORING CRITERIA:
+    
+    EASY MODE (Beginner Level):
+    - Base score starts at 100 points
+    - Focus on basic communication skills and comfort level
+    - Deduct 1 point per repeated filler word between sentences
+    - STAR method usage is a bonus (+5 points if demonstrated)
+    - Body language: Basic engagement and screen focus (+3 points if good)
+    - Clear communication: +2 points if responses are easy to understand
+    - Expected score range: 70-100 (beginners should score well)
+    
+    MEDIUM MODE (Intermediate Level):
+    - Base score starts at 100 points
+    - Higher expectations for structured responses and STAR method
+    - Deduct 1 point per repeated filler word between sentences
+    - STAR method usage is expected (-10 points if not demonstrated)
+    - Time management: -5 points if consistently exceeding 15 seconds
+    - Body language: Professional engagement and confidence (+3 points if good)
+    - Structured responses: +5 points if consistently using STAR method
+    - Problem-solving: +3 points if showing analytical thinking
+    - Expected score range: 60-95 (moderate challenge)
+    
+    HARD MODE (Advanced Level):
+    - Base score starts at 100 points
+    - Strict expectations for quick thinking and structured responses
+    - Deduct 1 point per repeated filler word between sentences
+    - STAR method usage is mandatory (-15 points if not demonstrated)
+    - Time pressure: -10 points if not starting within 5 seconds consistently
+    - Complex scenario handling: -10 points if answers lack depth
+    - Body language: High confidence and composure under pressure (+5 points if excellent)
+    - Quick thinking: +5 points if responding rapidly and thoughtfully
+    - Leadership demonstration: +3 points if showing leadership qualities
+    - Expected score range: 40-90 (significant challenge)
+    
+    SCORING BREAKDOWN REQUIREMENTS:
+    - List ALL bonuses earned with specific point values
+    - List ALL deductions with specific point values
+    - Be specific about what earned or lost points (e.g., "+5 points for STAR method", "-2 points for 3 'um' usages")
+    - Include body language observations in the breakdown
+    - Show the calculation: baseScore + bonuses - deductions = finalScore
     
     STAR METHOD RECOGNITION:
     - Look for evidence of STAR method usage (Situation, Task, Action, Result) in the candidate's responses
     - If the candidate demonstrates STAR structure, include it in "whatYouDidWell" with specific praise
     - Examples of STAR recognition: "You effectively used the STAR method by clearly describing the situation, your specific tasks, the actions you took, and the results achieved."
     - This is a significant positive indicator and should be highlighted when present
+    
+    IMPORTANT: This interview was conducted in {mode.upper()} MODE. Apply the appropriate scoring criteria above.
     
     Analyze for clarity, conciseness, STAR method usage, engagement, and eye contact.
     """
