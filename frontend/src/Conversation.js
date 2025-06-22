@@ -142,7 +142,7 @@ const Conversation = () => {
         message.transcriptType === 'final' &&
         message.transcript
       ) {
-        setTranscript((prev) => `${prev}\n${message.role}: ${message.transcript}`);
+        setTranscript((prev) => `${prev}\n${message.role === 'assistant' ? 'Acey The Interviewer' : message.role === 'user' ? 'Interviewee' : message.role}: ${message.transcript}`);
         
         if (message.role === 'assistant') {
           // AI is speaking - extend the animation timeout
