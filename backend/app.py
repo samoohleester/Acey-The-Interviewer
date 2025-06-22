@@ -10,6 +10,8 @@ import google.generativeai as genai
 from google.api_core import exceptions
 import time
 import json
+from agent_client import get_followup_from_agent
+from interview_agents import MODE_CONFIGS
 
 # --- IMPORTANT ---
 # You must run a tunneling service like ngrok for Vapi to reach this local server.
@@ -61,20 +63,11 @@ def get_vapi_assistant():
         timestamp = int(time.time())
         assistant_name = f"Direct-Interviewer-{mode}-{timestamp}"
         
-        # Define system prompts for different modes
-        mode_prompts = {
-            'easy': {
-                "role": "system",
-                "content": "You are Acey, a friendly AI mock interviewer for EASY mode. Ask common, straightforward interview questions. Begin with a warm greeting and ask the candidate to introduce themselves. Speak clearly and with confidence. Keep responses natural, under 10 words, and ask one question at a time. Focus on basic questions about experience, skills, and background. Be encouraging and supportive."
-            },
-            'medium': {
-                "role": "system", 
-                "content": "You are Acey, a professional AI mock interviewer for MEDIUM mode. Ask behavioral and situational questions. Begin with a brief greeting, then dive into structured behavioral questions. Give candidates 15 seconds to answer each question. If they exceed 15 seconds, politely interrupt and move to the next question. Ask follow-up questions to get specific examples. Focus on STAR method responses and problem-solving scenarios."
-            },
-            'hard': {
-                "role": "system",
-                "content": "You are Acey, a challenging AI mock interviewer for HARD mode. Ask complex behavioral and situational questions with strict timing. Give candidates only 5 seconds to begin their answer. If they don't start within 5 seconds, skip the question and ask for clarification on why they hesitated. Then ask a follow-up question. Be direct and professional. Focus on leadership, conflict resolution, and high-pressure scenarios."
-            }
+        # Use agent-based prompts instead of hardcoded ones
+        config = MODE_CONFIGS[mode]
+        system_prompt = {
+            "role": "system",
+            "content": config['system_prompt']
         }
         
         assistant = vapi.assistants.create(
@@ -89,7 +82,7 @@ def get_vapi_assistant():
                 "provider": "google",
                 "model": "gemini-1.5-flash",
                 "temperature": 0.0,
-                "messages": [mode_prompts[mode]],
+                "messages": [system_prompt],
             },
             voice={
                 "provider": "11labs",
@@ -289,6 +282,32 @@ def get_review():
         }
         frame_analyses.clear()
         return jsonify(fallback_review), 500
+
+@app.route('/api/agent-followup', methods=['POST'])
+def agent_followup():
+    """Get a follow-up question from the appropriate agent based on user's answer"""
+    data = request.get_json()
+    mode = data.get('mode', 'easy')
+    answer = data.get('answer')
+    question_context = data.get('question_context')
+    user_id = data.get('user_id')
+
+    if not answer:
+        return jsonify({'error': 'No answer provided'}), 400
+
+    try:
+        # Use the agent to generate a follow-up question
+        followup = get_followup_from_agent(mode, answer, question_context, user_id)
+        
+        return jsonify({
+            'question': followup.question,
+            'difficulty': followup.difficulty,
+            'reasoning': followup.reasoning,
+            'expected_focus': followup.expected_focus
+        })
+    except Exception as e:
+        print(f"Error getting follow-up from agent: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001) 
