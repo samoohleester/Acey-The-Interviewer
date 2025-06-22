@@ -13,32 +13,25 @@ import json
 from agent_client import get_followup_from_agent
 from interview_agents import MODE_CONFIGS
 
-# --- IMPORTANT ---
-# You must run a tunneling service like ngrok for Vapi to reach this local server.
-# 1. Run ngrok: `ngrok http 5001`
-# 2. Copy the https forwarding URL from the ngrok output.
-# 3. Paste it here, replacing the placeholder.
-# Example: NGROK_URL = "https://1a2b-3c4d-5e6f.ngrok-free.app"
+
 NGROK_URL = os.getenv("NGROK_URL", "YOUR_NGROK_HTTPS_URL_HERE")
 
-# Load environment variables from .env file
+
 load_dotenv()
 
 app = Flask(__name__)
-# Apply CORS to all routes and origins
+
 CORS(app)
 
-# Initialize Vapi
+
 vapi = Vapi(token=os.environ.get('VAPI_API_KEY'))
-# Configure Gemini
+
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# In-memory storage for frame analysis.
-# Warning: This is not suitable for production with multiple users.
+
 frame_analyses = []
 
-# Global variables to track interview state
 question_count = 0
 current_assistant_id = None
 rate_limit_hit = False
@@ -49,21 +42,21 @@ def get_data():
 
 @app.route('/api/vapi-assistant')
 def get_vapi_assistant():
-    # Get the interview mode from query parameters, default to 'easy'
+ 
     mode = request.args.get('mode', 'easy')
     
-    # Clear previous analyses and reset rate limit flag for a new call
+
     frame_analyses.clear()
     global rate_limit_hit
     rate_limit_hit = False
     
     print(f"=== CREATING NEW ASSISTANT WITH MODE: {mode} ===")
     try:
-        # Use timestamp to ensure unique assistant name
+ 
         timestamp = int(time.time())
         assistant_name = f"Direct-Interviewer-{mode}-{timestamp}"
         
-        # Use agent-based prompts instead of hardcoded ones
+
         config = MODE_CONFIGS[mode]
         system_prompt = {
             "role": "system",
@@ -76,7 +69,7 @@ def get_vapi_assistant():
                 "provider": "deepgram",
                 "model": "nova-2",
                 "language": "en-US",
-                "endpointing": 500  # Maximum allowed by VAPI
+                "endpointing": 500  
             },
             model={
                 "provider": "google",
@@ -115,7 +108,7 @@ def analyze_frame():
     print(f"Frame data received, length: {len(data['frame'])}")
     
     try:
-        # Decode the base64 string
+       
         frame_data_url = data['frame']
         header, encoded = frame_data_url.split(',', 1)
         print(f"Frame header: {header}")
@@ -144,7 +137,7 @@ def analyze_frame():
     except exceptions.ResourceExhausted as e:
         print("!!! Gemini API rate limit exceeded. Halting frame analysis for this call. !!!")
         rate_limit_hit = True
-        # Also append a note to the analyses so the final report is aware.
+        
         frame_analyses.append("Note: Further body language analysis was halted due to API rate limits.")
         return jsonify({"error": f"Rate limit exceeded: {str(e)}"}), 429
             
@@ -259,8 +252,6 @@ def get_review():
         
         # Clean the response to ensure it's valid JSON
         cleaned_response_text = response.text.strip().replace("```json", "").replace("```", "")
-        
-        # Parse the JSON string into a Python dictionary
         review_json = json.loads(cleaned_response_text)
         
         print("Generated Review JSON:", review_json)
@@ -272,7 +263,6 @@ def get_review():
         print(f"Error in get_review: {e}")
         import traceback
         traceback.print_exc()
-        # Return a fallback review in case of an error
         fallback_review = {
             "summary": "There was an error generating your review. The AI response may not have been in the correct format. Please try again.",
             "whatYouDidWell": [],
@@ -296,7 +286,7 @@ def agent_followup():
         return jsonify({'error': 'No answer provided'}), 400
 
     try:
-        # Use the agent to generate a follow-up question
+        # Use agent and generate a follow-up question
         followup = get_followup_from_agent(mode, answer, question_context, user_id)
         
         return jsonify({

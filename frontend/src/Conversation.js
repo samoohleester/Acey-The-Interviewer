@@ -7,8 +7,6 @@ import CatAnimation from './CatAnimation';
 import { checkAndAwardBadge } from './placeholders';
 import './Conversation.css';
 
-// Initialize Vapi with your Public Key
-// IMPORTANT: Replace this with your actual Vapi Public Key
 const vapi = new Vapi('9ef2dad6-738e-4ba5-830b-a7c5f87dfd2d');
 
 const Conversation = () => {
@@ -17,7 +15,6 @@ const Conversation = () => {
   const navigate = useNavigate();
   const { difficulty } = location.state || {};
   
-  // Interview state
   const [callStatus, setCallStatus] = useState('inactive');
   const [transcript, setTranscript] = useState('');
   const [report, setReport] = useState(null);
@@ -27,7 +24,7 @@ const Conversation = () => {
   const captureIntervalRef = useRef(null);
   const nodeRef = useRef(null);
   const speechTimeoutRef = useRef(null);
-  const aiActivityRef = useRef(false); // Track if AI is actively responding
+  const aiActivityRef = useRef(false); 
 
   // Use a ref to hold the transcript to avoid stale closures in event handlers
   const transcriptRef = useRef('');
@@ -93,17 +90,16 @@ const Conversation = () => {
           title: `Interview - ${interviewMode.charAt(0).toUpperCase() + interviewMode.slice(1)} Mode`,
           difficulty: interviewMode,
           score: data.overallScore || 0,
-          duration: '15-20 min', // You can calculate actual duration if needed
+          duration: '15-20 min',
           date: new Date().toISOString(),
           transcript: finalTranscript,
           report: data
         };
         
         const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
-        savedInterviews.unshift(interviewData); // Add to beginning of array
+        savedInterviews.unshift(interviewData);
         localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
         
-        // Check for badge award
         if (data.overallScore >= 70) {
           checkAndAwardBadge(interviewMode, data.overallScore);
         }
@@ -145,31 +141,29 @@ const Conversation = () => {
         setTranscript((prev) => `${prev}\n${message.role === 'assistant' ? 'Acey The Interviewer' : message.role === 'user' ? 'Interviewee' : message.role}: ${message.transcript}`);
         
         if (message.role === 'assistant') {
-          // AI is speaking - extend the animation timeout
+         
           aiActivityRef.current = true;
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-          // Set a longer timeout that will be extended if we get more AI messages
-          // Medium mode responses are longer, so we need more time
+          
+         
           const timeoutDuration = interviewMode === 'medium' ? 3000 : 2000; // 3s for medium, 2s for others
           speechTimeoutRef.current = setTimeout(() => {
             setIsAISpeaking(false);
             aiActivityRef.current = false;
           }, timeoutDuration);
         } else if (message.role === 'user') {
-          // User just finished speaking, AI will start speaking soon
-          // Start the AI animation immediately
+      
           setIsAISpeaking(true);
           aiActivityRef.current = false;
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-          // Set a longer timeout to ensure AI animation covers the entire response
-          // This will be reset if we get more AI messages
-          const timeoutDuration = interviewMode === 'medium' ? 8000 : 6000; // 8s for medium, 6s for others
+        
+          const timeoutDuration = interviewMode === 'medium' ? 8000 : 6000; 
           speechTimeoutRef.current = setTimeout(() => {
-            // Only stop if we haven't detected AI activity
+            
             if (!aiActivityRef.current) {
               setIsAISpeaking(false);
             }
@@ -207,7 +201,7 @@ const Conversation = () => {
     };
   }, [sendFrameForAnalysis, fetchReview]);
 
-  // Function to start a new call
+  
   const startCall = async () => {
     setCallStatus('loading');
     setReport(null);
@@ -228,17 +222,17 @@ const Conversation = () => {
     }
   };
 
-  // Function to stop the call
+  
   const stopCall = () => {
     vapi.stop();
   };
 
   const viewReport = () => {
     if (report) {
-      // Store report data in localStorage for the new tab
+      
       localStorage.setItem('currentReport', JSON.stringify(report));
       
-      // Open report in a new tab
+      
       window.open('/report', '_blank');
     }
   };
@@ -260,7 +254,7 @@ const Conversation = () => {
       savedInterviews.unshift(interviewData);
       localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
       
-      // Show a brief success message
+      
       alert('Interview saved to history!');
     }
   };
