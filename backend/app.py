@@ -88,7 +88,7 @@ def get_vapi_assistant():
                 "provider": "11labs",
                 "voiceId": "21m00Tcm4TlvDq8ikWAM",
             },
-            first_message="Tell me about a recent project." if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure.",
+            first_message="What job are you currently interviewing for" if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure.",
         )
         
         current_assistant_id = assistant.id
