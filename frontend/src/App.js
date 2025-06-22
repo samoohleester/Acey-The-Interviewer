@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import LandingPage from './LandingPage';
+import LoginPage from './LoginPage';
+import SignupPage from './SignupPage';
 import Demo from './Demo';
 import DifficultySelection from './DifficultySelection';
 import Conversation from './Conversation';
@@ -12,6 +14,8 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route path="/demo" element={<Demo />}>
         <Route index element={<DifficultySelection />} />
         <Route path="conversation" element={<Conversation />} />

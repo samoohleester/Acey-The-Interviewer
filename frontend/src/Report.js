@@ -1,10 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import './Report.css';
 
 const Report = () => {
   const location = useLocation();
-  const { report } = location.state || {}; // Fallback for direct navigation
+  const [report, setReport] = useState(null);
+
+  useEffect(() => {
+    // Try to get report data from multiple sources
+    let reportData = null;
+    
+    // First, try to get from location state (existing navigation)
+    if (location.state && location.state.report) {
+      reportData = location.state.report;
+    }
+    // Then, try to get from window object (new tab approach)
+    else if (window.reportData) {
+      reportData = window.reportData;
+    }
+    // Finally, try to get from localStorage (fallback)
+    else {
+      const savedReport = localStorage.getItem('currentReport');
+      if (savedReport) {
+        reportData = JSON.parse(savedReport);
+      }
+    }
+
+    setReport(reportData);
+  }, [location.state]);
 
   if (!report) {
     return (

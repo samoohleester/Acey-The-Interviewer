@@ -62,6 +62,22 @@
   transform: scale(1.05);
 }
 
+.save-history-btn {
+  background: linear-gradient(to bottom, #27ae60, #1e8449);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-history-btn:hover {
+  background: linear-gradient(to bottom, #229954, #186a3b);
+  transform: scale(1.05);
+}
+
 .transcript-content {
   flex: 1;
   overflow-y: auto;

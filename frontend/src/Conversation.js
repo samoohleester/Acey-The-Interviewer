@@ -81,6 +81,23 @@ const Conversation = () => {
       const data = await reviewResponse.json();
       if (reviewResponse.ok) {
         setReport(data);
+        
+        // Save the completed interview to chat history
+        const interviewData = {
+          id: Date.now().toString(),
+          title: `Interview - ${interviewMode.charAt(0).toUpperCase() + interviewMode.slice(1)} Mode`,
+          difficulty: interviewMode,
+          score: data.overallScore || 0,
+          duration: '15-20 min', // You can calculate actual duration if needed
+          date: new Date().toISOString(),
+          transcript: finalTranscript,
+          report: data
+        };
+        
+        const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
+        savedInterviews.unshift(interviewData); // Add to beginning of array
+        localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
+        
       } else {
         setReport({ summary: data.review?.error || 'Failed to generate report.' });
       }
@@ -159,7 +176,33 @@ const Conversation = () => {
 
   const viewReport = () => {
     if (report) {
-      navigate('/report', { state: { report } });
+      // Store report data in localStorage for the new tab
+      localStorage.setItem('currentReport', JSON.stringify(report));
+      
+      // Open report in a new tab
+      window.open('/report', '_blank');
+    }
+  };
+
+  const saveToHistory = () => {
+    if (transcript && report && report.overallScore != null) {
+      const interviewData = {
+        id: Date.now().toString(),
+        title: `Interview - ${interviewMode.charAt(0).toUpperCase() + interviewMode.slice(1)} Mode`,
+        difficulty: interviewMode,
+        score: report.overallScore,
+        duration: '15-20 min',
+        date: new Date().toISOString(),
+        transcript: transcript,
+        report: report
+      };
+      
+      const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
+      savedInterviews.unshift(interviewData);
+      localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
+      
+      // Show a brief success message
+      alert('Interview saved to history!');
     }
   };
 
@@ -231,9 +274,14 @@ const Conversation = () => {
               <span className="loading-indicator">Generating report...</span>
             )}
             {report && report.overallScore != null && (
-              <button onClick={viewReport} className="view-report-btn">
-                View Report
-              </button>
+              <>
+                <button onClick={viewReport} className="view-report-btn">
+                  View Report
+                </button>
+                <button onClick={saveToHistory} className="save-history-btn">
+                  Save to History
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { auth } from './firebaseConfig';
+import { signOut } from 'firebase/auth';
 import './Demo.css';
 
 const Demo = () => {
@@ -69,6 +71,15 @@ const Demo = () => {
     setPendingNavigation(null);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const selectionState = {
     sessionName,
     setSessionName,
@@ -118,7 +129,7 @@ const Demo = () => {
               <Link to="/demo/support" onClick={(e) => handleLinkClick(e, '/demo/support')} className={location.pathname === '/demo/support' ? 'active' : ''}>Support</Link>
             </nav>
             <div className="sidebar-separator"></div>
-            <a href="/logout" className="sign-out-btn">Sign Out</a>
+            <button onClick={handleSignOut} className="sign-out-btn">Sign Out</button>
           </div>
         </div>
         <div className="main-content">

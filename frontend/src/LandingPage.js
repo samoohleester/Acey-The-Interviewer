@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import './LandingPage.css'; // We will create this file for styling
 
 const LandingPage = () => {
   return (
@@ -13,14 +15,14 @@ const LandingPage = () => {
           <a href="/about">About</a>
         </nav>
         <div className="auth-buttons">
-          <a href="/login" className="login-btn">Log in</a>
-          <a href="/signup" className="signup-btn">Sign up</a>
+          <Link to="/login" className="login-btn">Log in</Link>
+          <Link to="/signup" className="signup-btn">Sign up</Link>
         </div>
       </header>
       <main className="main-content">
         <h1>Ace every interview with <strong>Acey</strong>.</h1>
         <p>Level up your interviews with AI</p>
-        <a href="/demo" className="demo-btn">Demo</a>
+        <Link to="/demo" className="demo-btn">Demo</Link>
       </main>
     </div>
   );
