@@ -21,7 +21,8 @@ const DifficultySelection = () => {
   return (
     <>
       <header>
-        <h1>Select Interview Difficulty</h1>
+        <h1>Choose What Works Best for You</h1>
+        <p className="difficulty-subtitle">Pick a difficulty level to start your mock interview. Each level adjusts the question type, time pressure, and AI behavior.</p>
       </header>
       <div
         className={`difficulty-selection ${effectiveSelection ? `hover-${effectiveSelection}` : ''} ${selection ? `selected-${effectiveSelection}` : ''}`}
@@ -128,6 +129,6 @@ const DifficultySelection = () => {
       </div>
     </>
   );
-};
+}
 
-export default DifficultySelection; 
+export default DifficultySelection;

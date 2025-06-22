@@ -9,8 +9,8 @@ const LandingPage = () => {
         <nav className="App-nav">
           <div className="logo">
             <div className="logo-icon">
-              <img 
-                src="/logo/acey-logo.png" 
+              <img
+                src="/logo/acey-logo.png"
                 alt="Acey Logo"
                 className="logo-image"
                 onError={(e) => {
@@ -34,7 +34,7 @@ const LandingPage = () => {
       <main className="main-content">
         <h1>Ace every interview with <strong>Acey</strong>.</h1>
         <p>Level up your interviews with AI</p>
-        <Link to="/demo" className="demo-btn">Demo</Link>
+        <Link to="/demo" className="demo-btn">Try Acey!</Link>
       </main>
     </div>
   );
