@@ -3,6 +3,7 @@ import Draggable from 'react-draggable';
 import { useLocation, useOutletContext, useNavigate } from 'react-router-dom';
 import Vapi from '@vapi-ai/web';
 import Webcam from 'react-webcam';
+import CatAnimation from './CatAnimation';
 import './Conversation.css';
 
 // Initialize Vapi with your Public Key
@@ -20,9 +21,11 @@ const Conversation = () => {
   const [transcript, setTranscript] = useState('');
   const [report, setReport] = useState(null);
   const [interviewMode, setInterviewMode] = useState(difficulty || 'easy');
+  const [isAISpeaking, setIsAISpeaking] = useState(false);
   const webcamRef = useRef(null);
   const captureIntervalRef = useRef(null);
   const nodeRef = useRef(null);
+  const speechTimeoutRef = useRef(null);
 
   // Use a ref to hold the transcript to avoid stale closures in event handlers
   const transcriptRef = useRef('');
@@ -111,6 +114,7 @@ const Conversation = () => {
     const handleCallStart = () => {
       setCallStatus('active');
       setTranscript('');
+      setIsAISpeaking(false);
       console.log('Call has started');
       sendFrameForAnalysis();
       captureIntervalRef.current = setInterval(sendFrameForAnalysis, 30000);
@@ -118,6 +122,7 @@ const Conversation = () => {
 
     const handleCallEnd = () => {
       setCallStatus('inactive');
+      setIsAISpeaking(false);
       console.log('Call has ended');
       clearInterval(captureIntervalRef.current);
       fetchReview(transcriptRef.current);
@@ -130,11 +135,33 @@ const Conversation = () => {
         message.transcript
       ) {
         setTranscript((prev) => `${prev}\n${message.role}: ${message.transcript}`);
+        
+        // Fix the logic: When we get an assistant transcript, it means the AI just finished speaking
+        // So we should stop the animation, not start it
+        if (message.role === 'assistant') {
+          // AI just finished speaking, stop the animation
+          setIsAISpeaking(false);
+          if (speechTimeoutRef.current) {
+            clearTimeout(speechTimeoutRef.current);
+          }
+        } else if (message.role === 'user') {
+          // User just finished speaking, AI will start speaking soon
+          // Start the AI animation
+          setIsAISpeaking(true);
+          if (speechTimeoutRef.current) {
+            clearTimeout(speechTimeoutRef.current);
+          }
+          // Keep animation going for a reasonable time
+          speechTimeoutRef.current = setTimeout(() => {
+            setIsAISpeaking(false);
+          }, 3000); // 3 seconds should cover most AI responses
+        }
       }
     };
 
     const handleError = (e) => {
       setCallStatus('inactive');
+      setIsAISpeaking(false);
       console.error('Call error:', e);
       clearInterval(captureIntervalRef.current);
     };
@@ -149,6 +176,9 @@ const Conversation = () => {
       vapi.off('call-end', handleCallEnd);
       vapi.off('message', handleMessage);
       vapi.off('error', handleError);
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
     };
   }, [sendFrameForAnalysis, fetchReview]);
 
@@ -240,9 +270,10 @@ const Conversation = () => {
         
         <Draggable nodeRef={nodeRef} bounds="parent">
           <div ref={nodeRef} className="mini-video-view">
-            <div className="mini-video-placeholder">
-              <span>Mini View</span>
-            </div>
+            <CatAnimation 
+              isSpeaking={isAISpeaking} 
+              callStatus={callStatus}
+            />
           </div>
         </Draggable>
         
