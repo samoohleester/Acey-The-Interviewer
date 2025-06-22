@@ -1,0 +1,312 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: 'Helvetica Neue', sans-serif;
+  background-color: #121212;
+  color: #fff;
+}
+
+.demo-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-bar {
+  height: 60px;
+  background-color: #1c1c1c;
+  border-bottom: 1px solid #303030;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+  z-index: 200;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background-color: #fff;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.user-settings {
+  display: flex;
+  align-items: center;
+}
+
+.profile-icon {
+  width: 36px;
+  height: 36px;
+  background-color: #3a3a3a;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.content-area {
+  display: flex;
+  flex-grow: 1;
+  height: calc(100vh - 60px);
+}
+
+.sidebar {
+  width: 260px;
+  background-color: #1c1c1c;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid #303030;
+  z-index: 100;
+}
+
+.sidebar-top {
+  flex-grow: 1;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+}
+
+.sidebar-separator {
+  height: 1px;
+  background-color: #303030;
+  margin: 16px 0;
+}
+
+.new-chat-button, .sidebar nav a, .sign-out-btn {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  background-color: transparent;
+  color: #a0a0a0;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  text-align: left;
+  margin-bottom: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.new-chat-button:hover, .sidebar nav a:hover, .sign-out-btn:hover {
+  color: #fff;
+  background-color: #3a3a3a;
+}
+
+.new-chat-button.active, .sidebar nav a.active {
+  color: #fff;
+  background-color: #2a2a2a;
+}
+
+.main-content {
+  flex-grow: 1;
+  background-color: #212121;
+  padding: 40px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.main-content header {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  z-index: 10;
+}
+
+.main-content header h1 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.difficulty-selection {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  height: 600px;
+  box-sizing: border-box;
+  margin-top: 80px;
+  margin-left: 0;
+  padding-left: 0;
+  width: 100%;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.difficulty-card {
+  position: relative;
+  background-color: #2c2c2c;
+  border-radius: 12px;
+  width: 200px;
+  height: 250px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform-origin: top left;
+}
+
+/* --- TEXT ALIGNMENT ON EXPAND --- */
+.difficulty-selection.hover-easy .difficulty-card:nth-child(1),
+.difficulty-selection.hover-medium .difficulty-card:nth-child(2),
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3) {
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+}
+.difficulty-selection.hover-easy .difficulty-card:nth-child(1) h2,
+.difficulty-selection.hover-medium .difficulty-card:nth-child(2) h2,
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3) h2 {
+  font-size: 16px;
+  padding: 12px 15px 0 15px;
+  margin-bottom: 8px;
+  transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* --- SELECTED STATE GLOW --- */
+.difficulty-selection.selected-easy .difficulty-card:nth-child(1),
+.difficulty-selection.selected-medium .difficulty-card:nth-child(2),
+.difficulty-selection.selected-hard .difficulty-card:nth-child(3) {
+  box-shadow: 0 0 25px 5px rgba(74, 144, 226, 0.6);
+}
+
+/* --- HOVER STATES --- */
+
+/* Easy Hover */
+.difficulty-selection.hover-easy .difficulty-card:nth-child(1) {
+  transform: scale(1.8);
+  z-index: 10;
+}
+.difficulty-selection.hover-easy .difficulty-card:nth-child(n+2) {
+  transform: translateX(180px);
+}
+
+/* Medium Hover */
+.difficulty-selection.hover-medium .difficulty-card:nth-child(2) {
+  transform: scale(1.8);
+  z-index: 10;
+}
+.difficulty-selection.hover-medium .difficulty-card:nth-child(n+3) {
+  transform: translateX(180px);
+}
+
+/* Hard Hover */
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3) {
+  transform: scale(1.8);
+  z-index: 10;
+}
+
+.difficulty-card h2 {
+  font-size: 22px;
+  font-weight: bold;
+  background: linear-gradient(to bottom, #57A5FF, #1758B3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transition: all 0.3s ease;
+}
+
+.difficulty-selection.selected-easy .difficulty-card:nth-child(1) h2,
+.difficulty-selection.selected-medium .difficulty-card:nth-child(2) h2,
+.difficulty-selection.selected-hard .difficulty-card:nth-child(3) h2 {
+  font-size: 16px;
+  padding: 12px 15px 0 15px;
+  margin-bottom: 8px;
+  transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #2c2c2c;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 20px;
+}
+
+.modal-content p {
+  margin-bottom: 24px;
+  color: #a0a0a0;
+  line-height: 1.5;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cancel-btn, .confirm-btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.cancel-btn {
+  background-color: #3a3a3a;
+  color: #fff;
+}
+
+.cancel-btn:hover {
+  background-color: #4a4a4a;
+}
+
+.confirm-btn {
+  background-color: #e74c3c;
+  color: #fff;
+}
+
+.confirm-btn:hover {
+  background-color: #c0392b;
+} 
