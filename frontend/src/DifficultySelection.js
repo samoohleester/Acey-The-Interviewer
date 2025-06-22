@@ -1,6 +1,7 @@
 import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import DifficultyDetails from './DifficultyDetails';
+import CustomDifficultyDetails from './CustomDifficultyDetails';
 import './Demo.css';
 
 const DifficultySelection = () => {
@@ -31,9 +32,9 @@ const DifficultySelection = () => {
           onClick={() => handleSelect('easy')}
         >
           <h2>Easy</h2>
-          {effectiveSelection === 'easy' && 
-            <DifficultyDetails 
-              difficulty="easy" 
+          {effectiveSelection === 'easy' &&
+            <DifficultyDetails
+              difficulty="easy"
               chatName={sessionName}
               onChatNameChange={handleSessionNameChange}
             />
@@ -46,9 +47,9 @@ const DifficultySelection = () => {
           onClick={() => handleSelect('medium')}
         >
           <h2>Medium</h2>
-          {effectiveSelection === 'medium' && 
-            <DifficultyDetails 
-              difficulty="medium" 
+          {effectiveSelection === 'medium' &&
+            <DifficultyDetails
+              difficulty="medium"
               chatName={sessionName}
               onChatNameChange={handleSessionNameChange}
             />
@@ -61,9 +62,24 @@ const DifficultySelection = () => {
           onClick={() => handleSelect('hard')}
         >
           <h2>Hard</h2>
-          {effectiveSelection === 'hard' && 
-            <DifficultyDetails 
-              difficulty="hard" 
+          {effectiveSelection === 'hard' &&
+            <DifficultyDetails
+              difficulty="hard"
+              chatName={sessionName}
+              onChatNameChange={handleSessionNameChange}
+            />
+          }
+        </div>
+        <div
+          className="difficulty-card"
+          onMouseEnter={() => handleMouseEnter('custom')}
+          onMouseLeave={handleMouseLeave}
+          onClick={() => handleSelect('custom')}
+        >
+          <h2>Custom</h2>
+          {effectiveSelection === 'custom' &&
+            <CustomDifficultyDetails
+              difficulty="custom"
               chatName={sessionName}
               onChatNameChange={handleSessionNameChange}
             />

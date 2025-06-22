@@ -10,8 +10,13 @@ import google.generativeai as genai
 from google.api_core import exceptions
 import time
 import json
+import requests
+from bs4 import BeautifulSoup
+import re
+from urllib.parse import urlparse
 from agent_client import get_followup_from_agent
 from interview_agents import MODE_CONFIGS
+from enhanced_agent_client import get_enhanced_followup_from_agents
 
 # --- IMPORTANT ---
 # You must run a tunneling service like ngrok for Vapi to reach this local server.
@@ -29,7 +34,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Initialize Vapi
-vapi = Vapi(token=os.environ.get('VAPI_API_KEY'))
+vapi = Vapi(token="723a22c3-d9e4-4f85-9f69-a6eaeb24157a")
 # Configure Gemini
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 model = genai.GenerativeModel('gemini-1.5-flash')
@@ -43,14 +48,130 @@ question_count = 0
 current_assistant_id = None
 rate_limit_hit = False
 
+def generate_custom_system_prompt(custom_config):
+    """Generate a custom system prompt based on user configuration"""
+    question_type = custom_config.get('questionType', 'Common Questions')
+    time_limit = custom_config.get('timeLimit', 'No Time Limit')
+    curveballs = custom_config.get('curveballs', 'None')
+    job_description = custom_config.get('jobDescription', '')
+    
+    # Base prompt
+    base_prompt = """You are an expert interview coach conducting a mock interview. Your role is to help the candidate practice and improve their interview skills."""
+    
+    # Add job description context if available
+    job_context = ""
+    if job_description:
+        job_context = f"""
+
+Job Description Context:
+{job_description}
+
+Use this job description to tailor your questions and evaluate responses. Ask questions that are relevant to this specific role and company."""
+    
+    # Add question type instructions
+    question_instructions = {
+        'Common Questions': 'Focus on standard interview questions about experience, skills, and background.',
+        'Behavioral & Situational': 'Ask behavioral questions using the STAR method (Situation, Task, Action, Result).',
+        'Technical Questions': 'Include technical questions relevant to the candidate\'s field.',
+        'All Types': 'Mix behavioral, situational, and technical questions throughout the interview.',
+        'Leadership & Management': 'Focus on leadership scenarios, team management, and decision-making.',
+        'Problem Solving': 'Present problem-solving scenarios and case studies.',
+        'Communication Skills': 'Emphasize communication, presentation, and interpersonal skills.',
+        'Team Collaboration': 'Focus on teamwork, collaboration, and conflict resolution scenarios.'
+    }
+    
+    # Add time limit instructions
+    time_instructions = {
+        'No Time Limit': 'Allow candidates to take their time with answers.',
+        '30 seconds per answer': 'Gently remind candidates to keep answers concise (30 seconds).',
+        '15 seconds per answer': 'Encourage brief, focused answers (15 seconds).',
+        '10 seconds per answer': 'Push for very concise answers (10 seconds).',
+        '5 seconds per answer': 'Require extremely brief answers (5 seconds).',
+        '2 minutes per answer': 'Allow detailed answers (2 minutes).',
+        '1 minute per answer': 'Encourage moderate detail (1 minute).'
+    }
+    
+    # Add curveball instructions
+    curveball_instructions = {
+        'None': 'Keep questions straightforward and predictable.',
+        'Ask to clarify': 'Ask follow-up questions to clarify responses.',
+        'In-depth clarification': 'Dive deeper with challenging follow-up questions.',
+        'Follow-up questions': 'Ask multiple follow-up questions to test depth of knowledge.',
+        'Role-play scenarios': 'Present role-play situations and scenarios.',
+        'Stress testing': 'Create pressure situations to test composure.',
+        'Hypothetical situations': 'Present hypothetical scenarios and ask for solutions.',
+        'Past experience validation': 'Ask for specific examples and validate experiences.'
+    }
+    
+    # Build the complete prompt
+    prompt = f"""{base_prompt}{job_context}
+
+Question Type: {question_instructions.get(question_type, 'Use standard interview questions.')}
+
+Time Management: {time_instructions.get(time_limit, 'Allow reasonable time for answers.')}
+
+Interview Style: {curveball_instructions.get(curveballs, 'Keep the interview professional and constructive.')}
+
+Guidelines:
+- Be professional but encouraging
+- Provide constructive feedback when appropriate
+- Adapt your style based on the candidate's responses
+- Keep the interview flowing naturally
+- Focus on helping the candidate improve their skills
+- If a job description is provided, tailor questions to that specific role
+
+Remember: This is a practice interview designed to help the candidate improve their interview skills."""
+    
+    return {
+        "role": "system",
+        "content": prompt
+    }
+
+def generate_first_message(mode, custom_config=None):
+    """Generate the first message based on mode and custom configuration"""
+    if custom_config:
+        question_type = custom_config.get('questionType', 'Common Questions')
+        
+        first_messages = {
+            'Common Questions': "Hello! I'm your interview coach today. Let's start with something simple - tell me about a recent project you worked on.",
+            'Behavioral & Situational': "Welcome to your practice interview! Let's begin with a behavioral question. Can you describe a challenging situation you faced at work and how you handled it?",
+            'Technical Questions': "Hello! I'm here to help you practice technical interviews. Let's start with a technical question - what's a recent technical challenge you solved?",
+            'All Types': "Welcome to your comprehensive interview practice! Let's begin with a mix of questions. Tell me about a time you had to learn a new technology quickly.",
+            'Leadership & Management': "Hello! Today we'll focus on leadership scenarios. Can you describe a time when you had to lead a team through a difficult situation?",
+            'Problem Solving': "Welcome to your problem-solving interview practice! Let's start with a scenario - how would you approach solving a complex technical problem with limited resources?",
+            'Communication Skills': "Hello! Today we'll focus on communication skills. Can you tell me about a time when you had to explain a complex concept to someone with no technical background?",
+            'Team Collaboration': "Welcome to your team collaboration interview! Let's begin - describe a time when you had to work with a difficult team member. How did you handle it?"
+        }
+        
+        return first_messages.get(question_type, "Hello! Let's begin your practice interview. Tell me about yourself.")
+    
+    # Default messages for standard modes
+    default_messages = {
+        'easy': "Tell me about a recent project.",
+        'medium': "Let's begin. Tell me about a challenging situation you faced at work.",
+        'hard': "Ready? Describe a time you had to make a difficult decision under pressure."
+    }
+    
+    return default_messages.get(mode, "Hello! Let's begin your practice interview.")
+
 @app.route('/api/data')
 def get_data():
     return {'message': 'Hello from your Flask backend!'}
 
-@app.route('/api/vapi-assistant')
+@app.route('/api/vapi-assistant', methods=['GET', 'POST'])
 def get_vapi_assistant():
     # Get the interview mode from query parameters, default to 'easy'
     mode = request.args.get('mode', 'easy')
+    is_custom = request.args.get('custom', 'false').lower() == 'true'
+    
+    # Get custom configuration if provided
+    custom_config = None
+    if is_custom and request.method == 'POST':
+        try:
+            custom_config = request.get_json()
+        except Exception as e:
+            print(f"Error parsing custom config: {e}")
+            return jsonify({"error": "Invalid custom configuration"}), 400
     
     # Clear previous analyses and reset rate limit flag for a new call
     frame_analyses.clear()
@@ -58,17 +179,26 @@ def get_vapi_assistant():
     rate_limit_hit = False
     
     print(f"=== CREATING NEW ASSISTANT WITH MODE: {mode} ===")
+    if custom_config:
+        print(f"Custom config: {custom_config}")
+    
     try:
         # Use timestamp to ensure unique assistant name
         timestamp = int(time.time())
         assistant_name = f"Direct-Interviewer-{mode}-{timestamp}"
         
-        # Use agent-based prompts instead of hardcoded ones
-        config = MODE_CONFIGS[mode]
-        system_prompt = {
-            "role": "system",
-            "content": config['system_prompt']
-        }
+        # Generate system prompt based on mode and custom config
+        if custom_config:
+            system_prompt = generate_custom_system_prompt(custom_config)
+        else:
+            config = MODE_CONFIGS[mode]
+            system_prompt = {
+                "role": "system",
+                "content": config['system_prompt']
+            }
+        
+        # Generate first message based on configuration
+        first_message = generate_first_message(mode, custom_config)
         
         assistant = vapi.assistants.create(
             name=assistant_name,
@@ -88,7 +218,7 @@ def get_vapi_assistant():
                 "provider": "11labs",
                 "voiceId": "21m00Tcm4TlvDq8ikWAM",
             },
-            first_message="Tell me about a recent project." if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure.",
+            first_message=first_message,
         )
         
         current_assistant_id = assistant.id
@@ -308,6 +438,147 @@ def agent_followup():
     except Exception as e:
         print(f"Error getting follow-up from agent: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/enhanced-followup', methods=['POST'])
+def enhanced_followup():
+    print("[ENHANCED] Received request at /api/enhanced-followup")
+    data = request.get_json()
+    answer = data.get('answer')
+    context = data.get('context', {})
+    if not answer:
+        print("[ENHANCED] No answer provided in request body")
+        return jsonify({'error': 'No answer provided'}), 400
+    try:
+        feedback = get_enhanced_followup_from_agents(answer, context)
+        print(f"[ENHANCED] Feedback from agents: {feedback}")
+        return jsonify(feedback)
+    except Exception as e:
+        print(f"[ENHANCED] Error in enhanced_followup: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/parse-linkedin-job', methods=['POST'])
+def parse_linkedin_job():
+    data = request.get_json()
+    job_url = data.get('url')
+
+    if not job_url:
+        return jsonify({'error': 'No job URL provided'}), 400
+
+    try:
+        # Validate LinkedIn URL
+        if 'linkedin.com/jobs' not in job_url:
+            return jsonify({'error': 'Please provide a valid LinkedIn job URL'}), 400
+
+        # Set headers to mimic a browser request
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+
+        print(f"Attempting to fetch LinkedIn job: {job_url}")
+        
+        # Fetch the job page
+        response = requests.get(job_url, headers=headers, timeout=15)
+        response.raise_for_status()
+        
+        print(f"Successfully fetched page, status: {response.status_code}")
+        
+        # Parse the HTML
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Extract job information
+        job_description = ""
+        
+        # Try multiple selectors for job description
+        description_selectors = [
+            '.job-description__content',
+            '.show-more-less-html__markup',
+            '.description__text',
+            '[data-job-description]',
+            '.job-description',
+            'div[class*="job-description"]',
+            'div[class*="description"]',
+            'div[class*="content"]',
+            '.job-description__content--rich-text',
+            '.job-description__content--rich-text__content'
+        ]
+        
+        print(f"Trying {len(description_selectors)} different selectors...")
+        
+        for i, selector in enumerate(description_selectors):
+            try:
+                desc_element = soup.select_one(selector)
+                if desc_element:
+                    job_description = desc_element.get_text(strip=True)
+                    print(f"Found job description with selector {i}: {selector}")
+                    print(f"Description length: {len(job_description)}")
+                    if len(job_description) > 50:  # Make sure we got meaningful content
+                        break
+            except Exception as e:
+                print(f"Error with selector {selector}: {e}")
+                continue
+        
+        # If no description found, try to extract from meta tags
+        if not job_description or len(job_description) < 50:
+            print("Trying meta tags...")
+            meta_desc = soup.find('meta', {'name': 'description'})
+            if meta_desc and meta_desc.get('content'):
+                job_description = meta_desc.get('content')
+                print(f"Found description in meta tag: {len(job_description)} chars")
+        
+        # If still no description, try to extract from the page text
+        if not job_description or len(job_description) < 50:
+            print("Trying text extraction...")
+            # Look for common job description patterns
+            page_text = soup.get_text()
+            # Try to find job description in the page content
+            lines = page_text.split('\n')
+            description_lines = []
+            in_description = False
+            
+            for line in lines:
+                line = line.strip()
+                if any(keyword in line.lower() for keyword in ['responsibilities', 'requirements', 'qualifications', 'about the role', 'job description', 'what you\'ll do', 'what you will do']):
+                    in_description = True
+                if in_description and line:
+                    description_lines.append(line)
+                if in_description and len(description_lines) > 20:  # Limit description length
+                    break
+            
+            job_description = ' '.join(description_lines[:20])  # Take first 20 lines
+            print(f"Extracted from text: {len(job_description)} chars")
+        
+        # Clean up the description
+        if job_description:
+            # Remove extra whitespace and normalize
+            job_description = re.sub(r'\s+', ' ', job_description).strip()
+            # Limit length
+            if len(job_description) > 2000:
+                job_description = job_description[:2000] + "..."
+            print(f"Final description length: {len(job_description)}")
+        
+        if not job_description or len(job_description) < 20:
+            print("Could not extract meaningful job description")
+            return jsonify({'error': 'Could not extract job description from the provided URL. Please try copying the job description manually.'}), 400
+
+        return jsonify({
+            'jobDescription': job_description,
+            'source': 'linkedin',
+            'url': job_url
+        })
+        
+    except requests.RequestException as e:
+        print(f"Request error parsing LinkedIn job: {e}")
+        return jsonify({'error': 'Failed to fetch job posting. Please check the URL and try again.'}), 500
+    except Exception as e:
+        print(f"Error parsing LinkedIn job: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to parse job posting. Please try copying the job description manually.'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001) 

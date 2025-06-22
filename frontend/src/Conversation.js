@@ -15,13 +15,14 @@ const Conversation = () => {
   const { clearSessionName, selection } = useOutletContext();
   const location = useLocation();
   const navigate = useNavigate();
-  const { difficulty } = location.state || {};
-  
+  const { difficulty, customConfig } = location.state || {};
+
   // Interview state
   const [callStatus, setCallStatus] = useState('inactive');
   const [transcript, setTranscript] = useState('');
   const [report, setReport] = useState(null);
   const [interviewMode, setInterviewMode] = useState(difficulty || 'easy');
+  const [customSettings, setCustomSettings] = useState(customConfig || null);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const webcamRef = useRef(null);
   const captureIntervalRef = useRef(null);
@@ -46,7 +47,7 @@ const Conversation = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ frame }),
           });
-          
+
           if (response.ok) {
             const result = await response.json();
             console.log('Frame analysis successful:', result);
@@ -77,15 +78,15 @@ const Conversation = () => {
       const reviewResponse = await fetch('http://127.0.0.1:5001/api/get-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           transcript: finalTranscript,
-          mode: interviewMode 
+          mode: interviewMode
         }),
       });
       const data = await reviewResponse.json();
       if (reviewResponse.ok) {
         setReport(data);
-        
+
         // Save the completed interview to chat history
         const interviewData = {
           id: Date.now().toString(),
@@ -97,16 +98,16 @@ const Conversation = () => {
           transcript: finalTranscript,
           report: data
         };
-        
+
         const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
         savedInterviews.unshift(interviewData); // Add to beginning of array
         localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
-        
+
         // Check for badge award
         if (data.overallScore >= 70) {
           checkAndAwardBadge(interviewMode, data.overallScore);
         }
-        
+
       } else {
         setReport({ summary: data.review?.error || 'Failed to generate report.' });
       }
@@ -141,7 +142,7 @@ const Conversation = () => {
         message.transcript
       ) {
         setTranscript((prev) => `${prev}\n${message.role}: ${message.transcript}`);
-        
+
         // Fix the logic: When we get an assistant transcript, it means the AI just finished speaking
         // So we should stop the animation, not start it
         if (message.role === 'assistant') {
@@ -193,11 +194,23 @@ const Conversation = () => {
     setCallStatus('loading');
     setReport(null);
     try {
-      const response = await fetch(`http://127.0.0.1:5001/api/vapi-assistant?mode=${interviewMode}`);
+      let url = `http://127.0.0.1:5001/api/vapi-assistant?mode=${interviewMode}`;
+
+      // If we have custom settings, send them to the backend
+      if (customSettings) {
+        url += `&custom=true`;
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: customSettings ? JSON.stringify(customSettings) : undefined
+      });
+
       if (!response.ok) throw new Error(`Backend error: ${response.statusText}`);
       const { assistantId } = await response.json();
       if (!assistantId) throw new Error('Assistant ID not received from backend.');
-      
+
       vapi.start(assistantId);
     } catch (error) {
       console.error('Failed to start call:', error);
@@ -214,7 +227,7 @@ const Conversation = () => {
     if (report) {
       // Store report data in localStorage for the new tab
       localStorage.setItem('currentReport', JSON.stringify(report));
-      
+
       // Open report in a new tab
       window.open('/report', '_blank');
     }
@@ -232,11 +245,11 @@ const Conversation = () => {
         transcript: transcript,
         report: report
       };
-      
+
       const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
       savedInterviews.unshift(interviewData);
       localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
-      
+
       // Show a brief success message
       alert('Interview saved to history!');
     }
@@ -245,9 +258,12 @@ const Conversation = () => {
   useEffect(() => {
     if (difficulty) {
       setInterviewMode(difficulty);
+      if (customConfig) {
+        setCustomSettings(customConfig);
+      }
       clearSessionName();
     }
-  }, [difficulty, clearSessionName]);
+  }, [difficulty, customConfig, clearSessionName]);
 
   return (
     <div className="conversation-container">
@@ -270,30 +286,42 @@ const Conversation = () => {
             </div>
             <div className="mode-indicator">
               Mode: {interviewMode.toUpperCase()}
+              {customSettings && (
+                <div className="custom-settings">
+                  <div>Q: {customSettings.questionType}</div>
+                  <div>T: {customSettings.timeLimit}</div>
+                  <div>C: {customSettings.curveballs}</div>
+                  {customSettings.jobDescription && (
+                    <div className="job-info">
+                      📄 Job Description: {customSettings.jobDescriptionSource === 'linkedin' ? 'LinkedIn' : 'Manual'}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
-        
+
         <Draggable nodeRef={nodeRef} bounds="parent">
           <div ref={nodeRef} className="mini-video-view">
-            <CatAnimation 
-              isSpeaking={isAISpeaking} 
+            <CatAnimation
+              isSpeaking={isAISpeaking}
               callStatus={callStatus}
             />
           </div>
         </Draggable>
-        
+
         <div className="start-conversation-wrapper">
           {callStatus !== 'active' ? (
-            <button 
+            <button
               className="start-conversation-btn"
-              onClick={startCall} 
+              onClick={startCall}
               disabled={callStatus === 'loading'}
             >
               {callStatus === 'loading' ? 'Connecting...' : 'Start Conversation'}
             </button>
           ) : (
-            <button 
+            <button
               className="stop-conversation-btn"
               onClick={stopCall}
             >
@@ -302,7 +330,7 @@ const Conversation = () => {
           )}
         </div>
       </div>
-      
+
       <div className="transcript-panel">
         <div className="transcript-header">
           <h3>Interview Transcript</h3>

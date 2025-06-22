@@ -35,11 +35,15 @@ const Demo = () => {
     setRecentlyDeselected(null);
   };
 
-  const handleSessionNameChange = (difficulty, value) => {
+  const handleSessionNameChange = (difficulty, value, customConfig = null) => {
     setSessionName(value);
     if (value && selection !== difficulty) {
       setSelection(difficulty);
       setRecentlyDeselected(null);
+    }
+    // Store custom configuration if provided
+    if (customConfig) {
+      localStorage.setItem('customConfig', JSON.stringify(customConfig));
     }
   };
 
@@ -101,8 +105,8 @@ const Demo = () => {
       <div className="top-bar">
         <div className="logo-container">
           <div className="logo-icon">
-            <img 
-              src="/logo/acey-logo.png" 
+            <img
+              src="/logo/acey-logo.png"
               alt="Acey Logo"
               className="logo-image"
               onError={(e) => {
@@ -119,8 +123,8 @@ const Demo = () => {
       <div className="content-area">
         <div className="sidebar">
           <div className="sidebar-top">
-            <Link 
-              to="/demo" 
+            <Link
+              to="/demo"
               className="new-chat-button"
               onClick={(e) => handleLinkClick(e, '/demo')}
             >
@@ -145,7 +149,7 @@ const Demo = () => {
           <Outlet context={selectionState} />
         </div>
       </div>
-      
+
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="modal-overlay" onClick={cancelNavigation}>

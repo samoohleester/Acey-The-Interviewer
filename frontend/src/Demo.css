@@ -1,4 +1,5 @@
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
   font-family: 'Helvetica Neue', sans-serif;
@@ -77,7 +78,8 @@ body, html {
   display: flex;
   padding: 20px;
   gap: 20px;
-  overflow: hidden; /* Prevent scrolling issues */
+  overflow: hidden;
+  /* Prevent scrolling issues */
 }
 
 .sidebar {
@@ -105,7 +107,9 @@ body, html {
   margin: 16px 0;
 }
 
-.new-chat-button, .sidebar nav a, .sign-out-btn {
+.new-chat-button,
+.sidebar nav a,
+.sign-out-btn {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -122,12 +126,15 @@ body, html {
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
-.new-chat-button:hover, .sidebar nav a:hover, .sign-out-btn:hover {
+.new-chat-button:hover,
+.sidebar nav a:hover,
+.sign-out-btn:hover {
   color: #fff;
   background-color: #3a3a3a;
 }
 
-.new-chat-button.active, .sidebar nav a.active {
+.new-chat-button.active,
+.sidebar nav a.active {
   color: #fff;
   background-color: #2a2a2a;
 }
@@ -171,6 +178,7 @@ body, html {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -196,14 +204,17 @@ body, html {
 /* --- TEXT ALIGNMENT ON EXPAND --- */
 .difficulty-selection.hover-easy .difficulty-card:nth-child(1),
 .difficulty-selection.hover-medium .difficulty-card:nth-child(2),
-.difficulty-selection.hover-hard .difficulty-card:nth-child(3) {
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3),
+.difficulty-selection.hover-custom .difficulty-card:nth-child(4) {
   justify-content: flex-start;
   align-items: flex-start;
   flex-direction: column;
 }
+
 .difficulty-selection.hover-easy .difficulty-card:nth-child(1) h2,
 .difficulty-selection.hover-medium .difficulty-card:nth-child(2) h2,
-.difficulty-selection.hover-hard .difficulty-card:nth-child(3) h2 {
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3) h2,
+.difficulty-selection.hover-custom .difficulty-card:nth-child(4) h2 {
   font-size: 16px;
   padding: 12px 15px 0 15px;
   margin-bottom: 8px;
@@ -213,7 +224,8 @@ body, html {
 /* --- SELECTED STATE GLOW --- */
 .difficulty-selection.selected-easy .difficulty-card:nth-child(1),
 .difficulty-selection.selected-medium .difficulty-card:nth-child(2),
-.difficulty-selection.selected-hard .difficulty-card:nth-child(3) {
+.difficulty-selection.selected-hard .difficulty-card:nth-child(3),
+.difficulty-selection.selected-custom .difficulty-card:nth-child(4) {
   box-shadow: 0 0 25px 5px rgba(74, 144, 226, 0.6);
 }
 
@@ -224,6 +236,7 @@ body, html {
   transform: scale(1.8);
   z-index: 10;
 }
+
 .difficulty-selection.hover-easy .difficulty-card:nth-child(n+2) {
   transform: translateX(180px);
 }
@@ -233,12 +246,23 @@ body, html {
   transform: scale(1.8);
   z-index: 10;
 }
+
 .difficulty-selection.hover-medium .difficulty-card:nth-child(n+3) {
   transform: translateX(180px);
 }
 
 /* Hard Hover */
 .difficulty-selection.hover-hard .difficulty-card:nth-child(3) {
+  transform: scale(1.8);
+  z-index: 10;
+}
+
+.difficulty-selection.hover-hard .difficulty-card:nth-child(n+4) {
+  transform: translateX(180px);
+}
+
+/* Custom Hover */
+.difficulty-selection.hover-custom .difficulty-card:nth-child(4) {
   transform: scale(1.8);
   z-index: 10;
 }
@@ -255,7 +279,8 @@ body, html {
 
 .difficulty-selection.selected-easy .difficulty-card:nth-child(1) h2,
 .difficulty-selection.selected-medium .difficulty-card:nth-child(2) h2,
-.difficulty-selection.selected-hard .difficulty-card:nth-child(3) h2 {
+.difficulty-selection.selected-hard .difficulty-card:nth-child(3) h2,
+.difficulty-selection.selected-custom .difficulty-card:nth-child(4) h2 {
   font-size: 16px;
   padding: 12px 15px 0 15px;
   margin-bottom: 8px;
@@ -305,7 +330,8 @@ body, html {
 /* Logo adjustments for expanded cards */
 .difficulty-selection.hover-easy .difficulty-card:nth-child(1) .difficulty-logo,
 .difficulty-selection.hover-medium .difficulty-card:nth-child(2) .difficulty-logo,
-.difficulty-selection.hover-hard .difficulty-card:nth-child(3) .difficulty-logo {
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3) .difficulty-logo,
+.difficulty-selection.hover-custom .difficulty-card:nth-child(4) .difficulty-logo {
   width: 60px;
   height: 60px;
   margin: 12px 15px 8px 15px;
@@ -314,14 +340,16 @@ body, html {
 
 .difficulty-selection.hover-easy .difficulty-card:nth-child(1) .difficulty-logo-img,
 .difficulty-selection.hover-medium .difficulty-card:nth-child(2) .difficulty-logo-img,
-.difficulty-selection.hover-hard .difficulty-card:nth-child(3) .difficulty-logo-img {
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3) .difficulty-logo-img,
+.difficulty-selection.hover-custom .difficulty-card:nth-child(4) .difficulty-logo-img {
   width: 45px;
   height: 45px;
 }
 
 .difficulty-selection.hover-easy .difficulty-card:nth-child(1) .difficulty-logo-fallback,
 .difficulty-selection.hover-medium .difficulty-card:nth-child(2) .difficulty-logo-fallback,
-.difficulty-selection.hover-hard .difficulty-card:nth-child(3) .difficulty-logo-fallback {
+.difficulty-selection.hover-hard .difficulty-card:nth-child(3) .difficulty-logo-fallback,
+.difficulty-selection.hover-custom .difficulty-card:nth-child(4) .difficulty-logo-fallback {
   font-size: 30px;
   width: 45px;
   height: 45px;
@@ -368,7 +396,8 @@ body, html {
   justify-content: center;
 }
 
-.cancel-btn, .confirm-btn {
+.cancel-btn,
+.confirm-btn {
   padding: 10px 20px;
   border-radius: 6px;
   border: none;
@@ -543,16 +572,17 @@ body, html {
 }
 
 .error-message {
-    color: #ff4d4d;
-    background-color: rgba(255, 77, 77, 0.1);
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    text-align: center;
+  color: #ff4d4d;
+  background-color: rgba(255, 77, 77, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  text-align: center;
 }
 
-.left-panel, .right-panel {
-    background-color: #1a1a1a;
-    padding: 20px;
-} 
+.left-panel,
+.right-panel {
+  background-color: #1a1a1a;
+  padding: 20px;
+}
