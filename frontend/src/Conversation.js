@@ -4,6 +4,7 @@ import { useLocation, useOutletContext, useNavigate } from 'react-router-dom';
 import Vapi from '@vapi-ai/web';
 import Webcam from 'react-webcam';
 import CatAnimation from './CatAnimation';
+import { checkAndAwardBadge } from './placeholders';
 import './Conversation.css';
 
 // Initialize Vapi with your Public Key
@@ -100,6 +101,11 @@ const Conversation = () => {
         const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
         savedInterviews.unshift(interviewData); // Add to beginning of array
         localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
+        
+        // Check for badge award
+        if (data.overallScore >= 70) {
+          checkAndAwardBadge(interviewMode, data.overallScore);
+        }
         
       } else {
         setReport({ summary: data.review?.error || 'Failed to generate report.' });

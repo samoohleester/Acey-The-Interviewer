@@ -8,7 +8,19 @@ const LandingPage = () => {
       <header className="App-header">
         <nav className="App-nav">
           <div className="logo">
-            <div className="logo-icon"></div>
+            <div className="logo-icon">
+              <img 
+                src="/logo/acey-logo.png" 
+                alt="Acey Logo"
+                className="logo-image"
+                onError={(e) => {
+                  // Hide image and show fallback if logo doesn't load
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'block';
+                }}
+              />
+              <div className="logo-fallback"></div>
+            </div>
             <span>Acey</span>
           </div>
           <a href="/pitch">Pitch</a>

@@ -22,7 +22,7 @@ const DifficultySelection = () => {
         <h1>Select Interview Difficulty</h1>
       </header>
       <div
-        className={`difficulty-selection ${effectiveSelection ? `hover-${effectiveSelection}` : ''} ${selection ? `selected-${selection}` : ''}`}
+        className={`difficulty-selection ${effectiveSelection ? `hover-${effectiveSelection}` : ''} ${selection ? `selected-${effectiveSelection}` : ''}`}
       >
         <div
           className="difficulty-card"

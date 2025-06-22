@@ -100,11 +100,20 @@ const Demo = () => {
     <div className="demo-container">
       <div className="top-bar">
         <div className="logo-container">
-          <div className="logo-icon"></div>
+          <div className="logo-icon">
+            <img 
+              src="/logo/acey-logo.png" 
+              alt="Acey Logo"
+              className="logo-image"
+              onError={(e) => {
+                // Hide image and show fallback if logo doesn't load
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'block';
+              }}
+            />
+            <div className="logo-fallback"></div>
+          </div>
           <span className="logo-text">Acey</span>
-        </div>
-        <div className="user-settings">
-          <div className="profile-icon"></div>
         </div>
       </div>
       <div className="content-area">
