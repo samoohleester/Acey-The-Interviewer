@@ -93,37 +93,37 @@ const DifficultySelection = () => {
         <div className="info-box">
           <h3>🔵 Easy</h3>
           <ul>
-            <li>📝 Good for beginners</li>
-            <li>🤖 Basic behavioral questions</li>
-            <li>⏱️ No time pressure</li>
-            <li>🎯 No follow-ups</li>
+            <li>● Good for beginners</li>
+            <li>● Basic behavioral questions</li>
+            <li>● No time pressure</li>
+            <li>● No follow-ups</li>
           </ul>
         </div>
         <div className="info-box">
           <h3>🟠 Medium</h3>
           <ul>
-            <li>🧠 Moderate challenge</li>
-            <li>💬 Mix of behavioral & situational</li>
-            <li>⏱️ 15 seconds per answer</li>
-            <li>❓ Clarification follow-ups included</li>
+            <li>● Moderate challenge</li>
+            <li>● Mix of behavioral & situational</li>
+            <li>● 15 seconds per answer</li>
+            <li>● Clarification follow-ups included</li>
           </ul>
         </div>
         <div className="info-box">
           <h3>🔴 Hard</h3>
           <ul>
-            <li>🧪 Full difficulty</li>
-            <li>⚙️ Technical + scenario questions</li>
-            <li>⚡ Quick response timer (5 sec)</li>
-            <li>🔍 Deep probing follow-ups</li>
+            <li>● Full difficulty</li>
+            <li>● Technical + scenario questions</li>
+            <li>● Quick response timer (5 sec)</li>
+            <li>● Deep probing follow-ups</li>
           </ul>
         </div>
         <div className="info-box">
           <h3>🟢 Custom</h3>
           <ul>
-            <li>🛠️ Fully configurable</li>
-            <li>📌 Choose your question types</li>
-            <li>⏳ Set your time limits</li>
-            <li>🎲 Optional curveball logic</li>
+            <li>● Fully configurable</li>
+            <li>● Choose your question types</li>
+            <li>● Set your time limits</li>
+            <li>● Optional curveball logic</li>
           </ul>
         </div>
       </div>
