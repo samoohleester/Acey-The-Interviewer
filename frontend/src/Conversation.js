@@ -7,8 +7,6 @@ import CatAnimation from './CatAnimation';
 import { checkAndAwardBadge } from './placeholders';
 import './Conversation.css';
 
-// Initialize Vapi with your Public Key
-// IMPORTANT: Replace this with your actual Vapi Public Key
 const vapi = new Vapi('9ef2dad6-738e-4ba5-830b-a7c5f87dfd2d');
 
 const Conversation = () => {
@@ -53,7 +51,6 @@ const Conversation = () => {
             console.log('Frame analysis successful:', result);
           } else {
             console.error('Frame analysis failed with status:', response.status);
-            // If we hit a rate limit, stop sending frames.
             if (response.status === 429) {
               console.log('Rate limit hit. Halting frame analysis for this call.');
               clearInterval(captureIntervalRef.current);
@@ -145,31 +142,26 @@ const Conversation = () => {
         setTranscript((prev) => `${prev}\n${message.role}: ${message.transcript}`);
         
         if (message.role === 'assistant') {
-          // AI is speaking - extend the animation timeout
           aiActivityRef.current = true;
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-          // Set a longer timeout that will be extended if we get more AI messages
-          // Medium mode responses are longer, so we need more time
-          const timeoutDuration = interviewMode === 'medium' ? 3000 : 2000; // 3s for medium, 2s for others
+       
+          const timeoutDuration = interviewMode === 'medium' ? 3000 : 2000;
           speechTimeoutRef.current = setTimeout(() => {
             setIsAISpeaking(false);
             aiActivityRef.current = false;
           }, timeoutDuration);
         } else if (message.role === 'user') {
-          // User just finished speaking, AI will start speaking soon
-          // Start the AI animation immediately
+
           setIsAISpeaking(true);
           aiActivityRef.current = false;
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-          // Set a longer timeout to ensure AI animation covers the entire response
-          // This will be reset if we get more AI messages
-          const timeoutDuration = interviewMode === 'medium' ? 8000 : 6000; // 8s for medium, 6s for others
+   
+          const timeoutDuration = interviewMode === 'medium' ? 8000 : 6000;
           speechTimeoutRef.current = setTimeout(() => {
-            // Only stop if we haven't detected AI activity
             if (!aiActivityRef.current) {
               setIsAISpeaking(false);
             }
@@ -227,18 +219,13 @@ const Conversation = () => {
       setCallStatus('inactive');
     }
   };
-
-  // Function to stop the call
   const stopCall = () => {
     vapi.stop();
   };
 
   const viewReport = () => {
     if (report) {
-      // Store report data in localStorage for the new tab
       localStorage.setItem('currentReport', JSON.stringify(report));
-      
-      // Open report in a new tab
       window.open('/report', '_blank');
     }
   };
