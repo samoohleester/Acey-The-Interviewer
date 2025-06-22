@@ -16,6 +16,12 @@ function App() {
   const captureIntervalRef = useRef(null);
   const navigate = useNavigate();
 
+  // Use a ref to hold the transcript to avoid stale closures in event handlers
+  const transcriptRef = useRef('');
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
+
   const sendFrameForAnalysis = useCallback(async () => {
     if (webcamRef.current) {
       console.log('Attempting to capture frame...');
@@ -34,6 +40,11 @@ function App() {
             console.log('Frame analysis successful:', result);
           } else {
             console.error('Frame analysis failed with status:', response.status);
+            // If we hit a rate limit, stop sending frames.
+            if (response.status === 429) {
+              console.log('Rate limit hit. Halting frame analysis for this call.');
+              clearInterval(captureIntervalRef.current);
+            }
             const errorText = await response.text();
             console.error('Error response:', errorText);
           }
@@ -48,47 +59,7 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
-    // --- Set up Vapi event listeners once ---
-    vapi.on('call-start', () => {
-      setCallStatus('active');
-      setTranscript('');
-      console.log('Call has started');
-      
-      // Capture the first frame immediately, then start the interval.
-      sendFrameForAnalysis(); 
-      captureIntervalRef.current = setInterval(sendFrameForAnalysis, 15000); // Capture every 15 seconds
-    });
-
-    vapi.on('call-end', async () => {
-      setCallStatus('inactive');
-      console.log('Call has ended');
-      clearInterval(captureIntervalRef.current);
-      
-      // We need to use the `transcript` state value as it is at the moment of call end,
-      // so we pass it into a function to avoid issues with stale closures.
-      fetchReview(transcript);
-    });
-
-    vapi.on('message', (message) => {
-      if (message.type === 'transcript' && message.transcript) {
-        setTranscript((prev) => `${prev}\n${message.role}: ${message.transcript}`);
-      }
-    });
-
-    vapi.on('error', (e) => {
-      setCallStatus('inactive');
-      console.error('Call error:', e);
-      clearInterval(captureIntervalRef.current);
-    });
-
-    // --- Cleanup listeners on component unmount ---
-    return () => {
-      vapi.removeAllListeners();
-    };
-  }, [sendFrameForAnalysis, transcript]);
-
-  const fetchReview = async (finalTranscript) => {
+  const fetchReview = useCallback(async (finalTranscript) => {
     setReport({ status: 'loading' });
     try {
       const reviewResponse = await fetch('http://127.0.0.1:5001/api/get-review', {
@@ -106,7 +77,52 @@ function App() {
       console.error('Error fetching review:', error);
       setReport({ summary: 'Failed to fetch review.' });
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleCallStart = () => {
+      setCallStatus('active');
+      setTranscript('');
+      console.log('Call has started');
+      sendFrameForAnalysis();
+      captureIntervalRef.current = setInterval(sendFrameForAnalysis, 30000);
+    };
+
+    const handleCallEnd = () => {
+      setCallStatus('inactive');
+      console.log('Call has ended');
+      clearInterval(captureIntervalRef.current);
+      fetchReview(transcriptRef.current);
+    };
+
+    const handleMessage = (message) => {
+      if (
+        message.type === 'transcript' &&
+        message.transcriptType === 'final' &&
+        message.transcript
+      ) {
+        setTranscript((prev) => `${prev}\n${message.role}: ${message.transcript}`);
+      }
+    };
+
+    const handleError = (e) => {
+      setCallStatus('inactive');
+      console.error('Call error:', e);
+      clearInterval(captureIntervalRef.current);
+    };
+
+    vapi.on('call-start', handleCallStart);
+    vapi.on('call-end', handleCallEnd);
+    vapi.on('message', handleMessage);
+    vapi.on('error', handleError);
+
+    return () => {
+      vapi.off('call-start', handleCallStart);
+      vapi.off('call-end', handleCallEnd);
+      vapi.off('message', handleMessage);
+      vapi.off('error', handleError);
+    };
+  }, [sendFrameForAnalysis, fetchReview]);
 
   // Function to start a new call
   const startCall = async () => {

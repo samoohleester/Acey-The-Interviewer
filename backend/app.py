@@ -7,6 +7,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from vapi import Vapi
 import google.generativeai as genai
+from google.api_core import exceptions
 import time
 import json
 
@@ -38,6 +39,7 @@ frame_analyses = []
 # Global variables to track interview state
 question_count = 0
 current_assistant_id = None
+rate_limit_hit = False
 
 @app.route('/api/data')
 def get_data():
@@ -45,13 +47,10 @@ def get_data():
 
 @app.route('/api/vapi-assistant')
 def get_vapi_assistant():
-    # Clear previous analyses for a new call
+    # Clear previous analyses and reset rate limit flag for a new call
     frame_analyses.clear()
-    
-    # Reset interview state
-    global question_count, current_assistant_id
-    question_count = 0
-    current_assistant_id = None
+    global rate_limit_hit
+    rate_limit_hit = False
     
     print("=== CREATING NEW ASSISTANT ===")
     try:
@@ -73,7 +72,7 @@ def get_vapi_assistant():
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You are 'Acey', a friendly and professional AI interviewer. Your goal is to conduct a brief but effective behavioral interview. Ask one question at a time. Focus on project experiences, problem-solving skills, and teamwork. Frame your questions to encourage the user to respond with the STAR method (Situation, Task, Action, Result). Be concise and direct, but not robotic. Avoid filler words.",
+                        "content": "You are Acey, a structured, professional AI mock interviewer. Begin with a warm, short greeting. Start by asking the candidate to introduce themselves. Speak clearly and with confidence. Avoid filler words like 'um', 'uh', or 'well'. Keep responses natural, under 10 words, and ask one concise question at a time. Follow a realistic interview format: Introduction, Main Questions, Wrap-Up.",
                     }
                 ],
             },
@@ -95,6 +94,10 @@ def get_vapi_assistant():
 
 @app.route('/api/analyze-frame', methods=['POST'])
 def analyze_frame():
+    global rate_limit_hit
+    if rate_limit_hit:
+        return jsonify({"status": "error", "message": "Rate limit previously hit. No more frames will be analyzed."}), 429
+
     print("=== FRAME ANALYSIS REQUEST RECEIVED ===")
     data = request.get_json()
     if not data or 'frame' not in data:
@@ -129,6 +132,13 @@ def analyze_frame():
         else:
             print("ERROR: No response text from Gemini")
             return jsonify({"error": "No analysis generated"}), 500
+            
+    except exceptions.ResourceExhausted as e:
+        print("!!! Gemini API rate limit exceeded. Halting frame analysis for this call. !!!")
+        rate_limit_hit = True
+        # Also append a note to the analyses so the final report is aware.
+        frame_analyses.append("Note: Further body language analysis was halted due to API rate limits.")
+        return jsonify({"error": f"Rate limit exceeded: {str(e)}"}), 429
             
     except Exception as e:
         print(f"ERROR analyzing frame: {e}")
