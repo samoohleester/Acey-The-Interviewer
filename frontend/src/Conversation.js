@@ -9,7 +9,7 @@ import './Conversation.css';
 
 // Initialize Vapi with your Public Key
 // IMPORTANT: Replace this with your actual Vapi Public Key
-const vapi = new Vapi('03ddb274-4754-43a9-a48f-edce472b1f4c');
+const vapi = new Vapi('9ef2dad6-738e-4ba5-830b-a7c5f87dfd2d');
 
 const Conversation = () => {
   const { clearSessionName, selection } = useOutletContext();
@@ -183,6 +183,11 @@ const Conversation = () => {
       setIsAISpeaking(false);
       aiActivityRef.current = false;
       console.error('Call error:', e);
+      console.error('Error response details:', e.error);
+      console.error('Error status:', e.status);
+      console.error('Full error object:', JSON.stringify(e, null, 2));
+      console.error('Error message:', e.error?.message);
+      console.error('Error type:', typeof e.error);
       clearInterval(captureIntervalRef.current);
     };
 
@@ -212,9 +217,13 @@ const Conversation = () => {
       const { assistantId } = await response.json();
       if (!assistantId) throw new Error('Assistant ID not received from backend.');
       
+      console.log('Starting VAPI call with assistant ID:', assistantId);
+      console.log('Interview mode:', interviewMode);
+      
       vapi.start(assistantId);
     } catch (error) {
       console.error('Failed to start call:', error);
+      console.error('Error details:', error.message);
       setCallStatus('inactive');
     }
   };

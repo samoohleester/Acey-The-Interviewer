@@ -41,7 +41,10 @@ MODE_CONFIGS = {
         Ask common, straightforward interview questions. Begin with a warm greeting and ask 
         the candidate to introduce themselves. Speak clearly and with confidence. Keep responses 
         natural, under 10 words, and ask one question at a time. Focus on basic questions about 
-        experience, skills, and background. Be encouraging and supportive.""",
+        experience, skills, and background. Be encouraging and supportive.
+        
+        IMPORTANT: Wait 4 seconds of silence after the user finishes speaking before you respond. 
+        This gives them time to think and ensures you don't interrupt them.""",
         'question_types': [
             "Tell me about yourself",
             "What are your strengths?",
@@ -61,7 +64,10 @@ MODE_CONFIGS = {
         structured behavioral questions. Give candidates 15 seconds to answer each question. 
         If they exceed 15 seconds, politely interrupt and move to the next question. Ask 
         follow-up questions to get specific examples. Focus on STAR method responses and 
-        problem-solving scenarios.""",
+        problem-solving scenarios.
+        
+        IMPORTANT: Wait 4 seconds of silence after the user finishes speaking before you respond. 
+        This gives them time to think and ensures you don't interrupt them.""",
         'question_types': [
             "Tell me about a time you faced a challenge at work",
             "Describe a situation where you had to work with a difficult colleague",
@@ -82,7 +88,10 @@ MODE_CONFIGS = {
         start speaking within 5 seconds of you finishing your question, politely interrupt 
         and ask for clarification on why they hesitated. Once they start speaking, let them 
         complete their answer without interruption. Be direct and professional. Focus on 
-        leadership, conflict resolution, and high-pressure scenarios.""",
+        leadership, conflict resolution, and high-pressure scenarios.
+        
+        IMPORTANT: Wait 4 seconds of silence after the user finishes speaking before you respond. 
+        This gives them time to think and ensures you don't interrupt them.""",
         'question_types': [
             "Describe a time you had to make an unpopular decision as a leader",
             "Tell me about a situation where you had to resolve a major conflict",
