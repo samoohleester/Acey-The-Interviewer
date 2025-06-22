@@ -195,6 +195,12 @@ def get_review():
     - Example: "Um, I worked on a project. Um, it was challenging. Um, I learned a lot." = 3 point deduction (97/100)
     - Example: "I um worked on a project. It was challenging. I learned a lot." = 0 point deduction (100/100)
     
+    STAR METHOD RECOGNITION:
+    - Look for evidence of STAR method usage (Situation, Task, Action, Result) in the candidate's responses
+    - If the candidate demonstrates STAR structure, include it in "whatYouDidWell" with specific praise
+    - Examples of STAR recognition: "You effectively used the STAR method by clearly describing the situation, your specific tasks, the actions you took, and the results achieved."
+    - This is a significant positive indicator and should be highlighted when present
+    
     Analyze for clarity, conciseness, STAR method usage, engagement, and eye contact.
     """
 
