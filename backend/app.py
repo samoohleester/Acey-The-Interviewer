@@ -10,6 +10,9 @@ import google.generativeai as genai
 from google.api_core import exceptions
 import time
 import json
+import re
+import requests
+from bs4 import BeautifulSoup
 from agent_client import get_followup_from_agent
 from interview_agents import MODE_CONFIGS
 
@@ -45,23 +48,122 @@ def get_vapi_assistant():
  
     mode = request.args.get('mode', 'easy')
     
+    # Get custom configuration parameters
+    question_type = request.args.get('questionType', 'Common Questions')
+    time_limit = request.args.get('timeLimit', 'No Time Limit')
+    curveballs = request.args.get('curveballs', 'None')
+    session_name = request.args.get('sessionName', 'Custom Interview')
 
     frame_analyses.clear()
     global rate_limit_hit
     rate_limit_hit = False
     
     print(f"=== CREATING NEW ASSISTANT WITH MODE: {mode} ===")
+    if mode == 'custom':
+        print(f"Custom settings - Question Type: {question_type}, Time Limit: {time_limit}, Curveballs: {curveballs}")
+    
     try:
  
         timestamp = int(time.time())
         assistant_name = f"Direct-Interviewer-{mode}-{timestamp}"
         
+        # Create custom system prompt for custom mode
+        if mode == 'custom':
+            system_prompt_content = f"""You are Acey The Interviewer, an AI-powered interview coach conducting a custom interview session.
 
-        config = MODE_CONFIGS[mode]
+SESSION CONFIGURATION:
+- Question Type: {question_type}
+- Time Limit: {time_limit}
+- Curveballs: {curveballs}
+- Session Name: {session_name}
+
+INTERVIEW GUIDELINES:
+1. Question Focus: Based on the selected question type, tailor your questions accordingly:
+   - "Common Questions": Ask standard behavioral and situational questions
+   - "Behavioral & Situational": Focus on past experiences and hypothetical scenarios
+   - "Technical Questions": Include technical problem-solving and knowledge-based questions
+   - "All Types": Mix of behavioral, situational, and technical questions
+   - "Leadership & Management": Focus on leadership experiences and management scenarios
+   - "Problem Solving": Present complex problems and assess analytical thinking
+   - "Communication Skills": Evaluate verbal communication, clarity, and articulation
+   - "Team Collaboration": Focus on teamwork, conflict resolution, and collaboration
+
+2. Time Management: {time_limit}
+   - "No Time Limit": Allow candidates to take their time
+   - "30 seconds per answer": Encourage concise responses
+   - "15 seconds per answer": Apply moderate time pressure
+   - "10 seconds per answer": Apply significant time pressure
+   - "5 seconds per answer": Apply high time pressure
+   - "2 minutes per answer": Allow detailed responses
+   - "1 minute per answer": Balance between detail and conciseness
+
+3. Curveball Strategy: {curveballs}
+   - "None": Stick to standard interview questions
+   - "Ask to clarify": Request clarification when answers are vague
+   - "In-depth clarification": Dive deeper into specific aspects of answers
+   - "Follow-up questions": Ask probing follow-up questions
+   - "Role-play scenarios": Present hypothetical role-play situations
+   - "Stress testing": Gradually increase difficulty and pressure
+   - "Hypothetical situations": Present challenging hypothetical scenarios
+   - "Past experience validation": Ask for specific details to validate experiences
+
+CONDUCT GUIDELINES:
+- Be professional, encouraging, and constructive
+- Ask one question at a time and wait for a complete response
+- Provide gentle guidance if the candidate struggles
+- Maintain a conversational tone while being professional
+- Focus on the candidate's communication skills, problem-solving abilities, and experience
+- Adapt your approach based on the candidate's comfort level and performance
+
+Remember: This is a learning experience. Your goal is to help the candidate improve their interview skills while providing a realistic interview experience."""
+        else:
+            config = MODE_CONFIGS[mode]
+            system_prompt_content = config['system_prompt']
+        
+        # Add job-specific context if available
+        global current_job_analysis
+        if current_job_analysis and not current_job_analysis.get('error'):
+            job_context = f"""
+
+ROLE-SPECIFIC CONTEXT:
+- Target Role: {current_job_analysis.get('role', 'Not specified')}
+- Company: {current_job_analysis.get('company', 'Not specified')}
+- Key Responsibilities: {current_job_analysis.get('keyResponsibilities', 'Not specified')}
+- Required Skills: {current_job_analysis.get('requiredSkills', 'Not specified')}
+- Experience Level: {current_job_analysis.get('experienceLevel', 'Not specified')}
+- Industry: {current_job_analysis.get('industry', 'Not specified')}
+
+ROLE-SPECIFIC INTERVIEW FOCUS:
+{current_job_analysis.get('interviewFocus', 'Focus on general interview skills and experience')}
+
+When asking questions, tailor them to assess the candidate's fit for this specific role. Ask about relevant experience, skills, and scenarios that would be applicable to this position. Use the STAR method (Situation, Task, Action, Result) to structure behavioral questions."""
+            
+            system_prompt_content += job_context
+        
         system_prompt = {
             "role": "system",
-            "content": config['system_prompt']
+            "content": system_prompt_content
         }
+        
+        # Determine first message based on mode and custom settings
+        if mode == 'custom':
+            if 'Technical' in question_type:
+                first_message = "Let's begin with a technical assessment. What's your experience with problem-solving in your field?"
+            elif 'Leadership' in question_type:
+                first_message = "Welcome to your leadership interview. Tell me about a time you had to lead a team through a challenging situation."
+            elif 'Communication' in question_type:
+                first_message = "Let's focus on your communication skills. Describe a time you had to explain a complex concept to someone unfamiliar with the topic."
+            elif 'Team' in question_type:
+                first_message = "Welcome to your team collaboration interview. Tell me about a time you had to work with a difficult team member."
+            else:
+                first_message = f"Welcome to your {session_name} interview. Let's begin with a question about your experience."
+        else:
+            first_message = "What job are you currently interviewing for" if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure."
+        
+        # Add role-specific first message if job analysis is available
+        if current_job_analysis and not current_job_analysis.get('error'):
+            role = current_job_analysis.get('role', 'this role')
+            first_message = f"Welcome to your interview for the {role} position. Let's start by discussing your relevant experience and how it aligns with this role."
         
         assistant = vapi.assistants.create(
             name=assistant_name,
@@ -81,7 +183,7 @@ def get_vapi_assistant():
                 "provider": "11labs",
                 "voiceId": "21m00Tcm4TlvDq8ikWAM"
             },
-            first_message="What job are you currently interviewing for" if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure.",
+            first_message=first_message,
         )
         
         current_assistant_id = assistant.id
@@ -228,6 +330,17 @@ def get_review():
     - Leadership demonstration: +3 points if showing leadership qualities
     - Expected score range: 40-90 (significant challenge)
     
+    CUSTOM MODE (User-Configured):
+    - Base score starts at 100 points
+    - Scoring should adapt based on the custom configuration
+    - Question Type Focus: Score based on how well the candidate addressed the specific question type
+    - Time Management: Apply deductions based on the configured time limit
+    - Curveball Handling: Assess how well the candidate handled the configured curveball strategy
+    - Body language: Professional engagement and confidence (+3 points if good)
+    - STAR method usage: +5 points if demonstrated (regardless of question type)
+    - Adapt scoring expectations based on the difficulty level implied by the configuration
+    - Expected score range: 50-100 (varies based on configuration)
+    
     SCORING BREAKDOWN REQUIREMENTS:
     - List ALL bonuses earned with specific point values
     - List ALL deductions with specific point values
@@ -298,6 +411,165 @@ def agent_followup():
     except Exception as e:
         print(f"Error getting follow-up from agent: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze-job-description', methods=['POST'])
+def analyze_job_description():
+    data = request.get_json()
+    job_description = data.get('jobDescription')
+
+    if not job_description:
+        return jsonify({"error": "No job description provided"}), 400
+
+    try:
+        # Check if it's a LinkedIn URL
+        if 'linkedin.com/jobs' in job_description:
+            # Extract content from LinkedIn URL
+            job_content = extract_linkedin_content(job_description)
+        else:
+            # Use the provided text directly
+            job_content = job_description
+
+        # Analyze the job content using AI
+        analysis = analyze_job_content(job_content)
+        
+        return jsonify(analysis)
+    except Exception as e:
+        print(f"Error analyzing job description: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to analyze job description: {str(e)}"}), 500
+
+def extract_linkedin_content(url):
+    """Extract job description content from LinkedIn URL"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Try multiple selectors for job description content
+        selectors = [
+            '.description__text',
+            '.job-description',
+            '.description',
+            '[data-job-description]',
+            '.job-details',
+            '.job-description__content',
+            '.show-more-less-html__markup',
+            '.job-description__text'
+        ]
+        
+        for selector in selectors:
+            element = soup.select_one(selector)
+            if element:
+                text = element.get_text(strip=True)
+                if len(text) > 50:  # Ensure we got meaningful content
+                    return text
+        
+        # If no specific job description found, try to get the page title and any visible text
+        title = soup.find('title')
+        if title:
+            title_text = title.get_text(strip=True)
+            # Also try to get any paragraph content
+            paragraphs = soup.find_all('p')
+            paragraph_text = ' '.join([p.get_text(strip=True) for p in paragraphs[:5]])
+            
+            if paragraph_text:
+                return f"{title_text}\n\n{paragraph_text}"
+            else:
+                return title_text
+        
+        return "LinkedIn job posting content could not be extracted. Please try copying the job description text directly."
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Request error extracting LinkedIn content: {e}")
+        return "Error accessing LinkedIn URL. Please try copying the job description text directly."
+    except Exception as e:
+        print(f"Error extracting LinkedIn content: {e}")
+        return "Error extracting content from LinkedIn URL. Please try copying the job description text directly."
+
+def analyze_job_content(content):
+    """Analyze job content using AI to extract key information"""
+    try:
+        # Limit content length to avoid token limits
+        if len(content) > 4000:
+            content = content[:4000] + "..."
+        
+        prompt = f"""
+        Analyze the following job description and extract key information. Return a JSON object with the following structure:
+        
+        {{
+            "role": "Job title/role",
+            "company": "Company name if mentioned",
+            "keyResponsibilities": "Summary of main responsibilities (2-3 sentences)",
+            "requiredSkills": "Key skills and qualifications needed (2-3 sentences)",
+            "experienceLevel": "Junior/Mid/Senior level",
+            "industry": "Industry or sector",
+            "interviewFocus": "What the interviewer should focus on when asking questions"
+        }}
+        
+        Job Description:
+        {content}
+        
+        Provide a concise but comprehensive analysis. If any information is not available, use "Not specified" for that field.
+        Return ONLY the JSON object, no additional text.
+        """
+        
+        response = model.generate_content(prompt)
+        
+        # Clean the response to ensure it's valid JSON
+        cleaned_response = response.text.strip()
+        if cleaned_response.startswith('```json'):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.endswith('```'):
+            cleaned_response = cleaned_response[:-3]
+        if cleaned_response.startswith('```'):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith('```'):
+            cleaned_response = cleaned_response[:-3]
+        
+        # Try to parse the JSON
+        try:
+            analysis = json.loads(cleaned_response.strip())
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {e}")
+            print(f"Raw response: {cleaned_response}")
+            # Return a fallback analysis
+            return {
+                "role": "Job Role",
+                "company": "Company",
+                "keyResponsibilities": "Responsibilities will be assessed during the interview",
+                "requiredSkills": "Skills will be evaluated during the interview",
+                "experienceLevel": "Not specified",
+                "industry": "Not specified",
+                "interviewFocus": "Focus on general interview skills and experience"
+            }
+        
+        # Store the analysis for use in interview generation
+        global current_job_analysis
+        current_job_analysis = analysis
+        
+        return analysis
+        
+    except Exception as e:
+        print(f"Error analyzing job content: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "role": "Job Role",
+            "company": "Company",
+            "keyResponsibilities": "Responsibilities will be assessed during the interview",
+            "requiredSkills": "Skills will be evaluated during the interview",
+            "experienceLevel": "Not specified",
+            "industry": "Not specified",
+            "interviewFocus": "Focus on general interview skills and experience"
+        }
+
+# Global variable to store current job analysis
+current_job_analysis = None
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001) 

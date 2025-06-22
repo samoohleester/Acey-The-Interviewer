@@ -13,18 +13,19 @@ const Conversation = () => {
   const { clearSessionName, selection } = useOutletContext();
   const location = useLocation();
   const navigate = useNavigate();
-  const { difficulty } = location.state || {};
-  
+  const { difficulty, customConfig } = location.state || {};
+
   const [callStatus, setCallStatus] = useState('inactive');
   const [transcript, setTranscript] = useState('');
   const [report, setReport] = useState(null);
   const [interviewMode, setInterviewMode] = useState(difficulty || 'easy');
   const [isAISpeaking, setIsAISpeaking] = useState(false);
+  const [customSettings, setCustomSettings] = useState(customConfig || null);
   const webcamRef = useRef(null);
   const captureIntervalRef = useRef(null);
   const nodeRef = useRef(null);
   const speechTimeoutRef = useRef(null);
-  const aiActivityRef = useRef(false); 
+  const aiActivityRef = useRef(false);
 
   // Use a ref to hold the transcript to avoid stale closures in event handlers
   const transcriptRef = useRef('');
@@ -44,7 +45,7 @@ const Conversation = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ frame }),
           });
-          
+
           if (response.ok) {
             const result = await response.json();
             console.log('Frame analysis successful:', result);
@@ -75,15 +76,15 @@ const Conversation = () => {
       const reviewResponse = await fetch('http://127.0.0.1:5001/api/get-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           transcript: finalTranscript,
-          mode: interviewMode 
+          mode: interviewMode
         }),
       });
       const data = await reviewResponse.json();
       if (reviewResponse.ok) {
         setReport(data);
-        
+
         // Save the completed interview to chat history
         const interviewData = {
           id: Date.now().toString(),
@@ -95,15 +96,15 @@ const Conversation = () => {
           transcript: finalTranscript,
           report: data
         };
-        
+
         const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
         savedInterviews.unshift(interviewData);
         localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
-        
+
         if (data.overallScore >= 70) {
           checkAndAwardBadge(interviewMode, data.overallScore);
         }
-        
+
       } else {
         setReport({ summary: data.review?.error || 'Failed to generate report.' });
       }
@@ -139,31 +140,31 @@ const Conversation = () => {
         message.transcript
       ) {
         setTranscript((prev) => `${prev}\n${message.role === 'assistant' ? 'Acey The Interviewer' : message.role === 'user' ? 'Interviewee' : message.role}: ${message.transcript}`);
-        
+
         if (message.role === 'assistant') {
-         
+
           aiActivityRef.current = true;
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-          
-         
+
+
           const timeoutDuration = interviewMode === 'medium' ? 3000 : 2000; // 3s for medium, 2s for others
           speechTimeoutRef.current = setTimeout(() => {
             setIsAISpeaking(false);
             aiActivityRef.current = false;
           }, timeoutDuration);
         } else if (message.role === 'user') {
-      
+
           setIsAISpeaking(true);
           aiActivityRef.current = false;
           if (speechTimeoutRef.current) {
             clearTimeout(speechTimeoutRef.current);
           }
-        
-          const timeoutDuration = interviewMode === 'medium' ? 8000 : 6000; 
+
+          const timeoutDuration = interviewMode === 'medium' ? 8000 : 6000;
           speechTimeoutRef.current = setTimeout(() => {
-            
+
             if (!aiActivityRef.current) {
               setIsAISpeaking(false);
             }
@@ -201,19 +202,35 @@ const Conversation = () => {
     };
   }, [sendFrameForAnalysis, fetchReview]);
 
-  
+
   const startCall = async () => {
     setCallStatus('loading');
     setReport(null);
     try {
-      const response = await fetch(`http://127.0.0.1:5001/api/vapi-assistant?mode=${interviewMode}`);
+      let url = `http://127.0.0.1:5001/api/vapi-assistant?mode=${interviewMode}`;
+
+      // If custom mode, include custom configuration
+      if (interviewMode === 'custom' && customSettings) {
+        const customParams = new URLSearchParams({
+          questionType: customSettings.questionType,
+          timeLimit: customSettings.timeLimit,
+          curveballs: customSettings.curveballs,
+          sessionName: customSettings.sessionName
+        });
+        url += `&${customParams.toString()}`;
+      }
+
+      const response = await fetch(url);
       if (!response.ok) throw new Error(`Backend error: ${response.statusText}`);
       const { assistantId } = await response.json();
       if (!assistantId) throw new Error('Assistant ID not received from backend.');
-      
+
       console.log('Starting VAPI call with assistant ID:', assistantId);
       console.log('Interview mode:', interviewMode);
-      
+      if (customSettings) {
+        console.log('Custom settings:', customSettings);
+      }
+
       vapi.start(assistantId);
     } catch (error) {
       console.error('Failed to start call:', error);
@@ -222,17 +239,17 @@ const Conversation = () => {
     }
   };
 
-  
+
   const stopCall = () => {
     vapi.stop();
   };
 
   const viewReport = () => {
     if (report) {
-      
+
       localStorage.setItem('currentReport', JSON.stringify(report));
-      
-      
+
+
       window.open('/report', '_blank');
     }
   };
@@ -249,12 +266,12 @@ const Conversation = () => {
         transcript: transcript,
         report: report
       };
-      
+
       const savedInterviews = JSON.parse(localStorage.getItem('savedInterviews') || '[]');
       savedInterviews.unshift(interviewData);
       localStorage.setItem('savedInterviews', JSON.stringify(savedInterviews));
-      
-      
+
+
       alert('Interview saved to history!');
     }
   };
@@ -287,31 +304,38 @@ const Conversation = () => {
             </div>
             <div className="mode-indicator">
               Mode: {interviewMode.toUpperCase()}
+              {interviewMode === 'custom' && customSettings && (
+                <div className="custom-settings-info">
+                  <div>Type: {customSettings.questionType}</div>
+                  <div>Time: {customSettings.timeLimit}</div>
+                  <div>Curveballs: {customSettings.curveballs}</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-        
+
         <Draggable nodeRef={nodeRef} bounds="parent">
           <div ref={nodeRef} className="mini-video-view">
-            <CatAnimation 
-              isSpeaking={isAISpeaking} 
+            <CatAnimation
+              isSpeaking={isAISpeaking}
               callStatus={callStatus}
               interviewMode={interviewMode}
             />
           </div>
         </Draggable>
-        
+
         <div className="start-conversation-wrapper">
           {callStatus !== 'active' ? (
-            <button 
+            <button
               className="start-conversation-btn"
-              onClick={startCall} 
+              onClick={startCall}
               disabled={callStatus === 'loading'}
             >
               {callStatus === 'loading' ? 'Connecting...' : 'Start Conversation'}
             </button>
           ) : (
-            <button 
+            <button
               className="stop-conversation-btn"
               onClick={stopCall}
             >
@@ -320,7 +344,7 @@ const Conversation = () => {
           )}
         </div>
       </div>
-      
+
       <div className="transcript-panel">
         <div className="transcript-header">
           <h3>Interview Transcript</h3>

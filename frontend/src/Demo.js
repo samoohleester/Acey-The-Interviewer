@@ -11,6 +11,9 @@ const Demo = () => {
   const [recentlyDeselected, setRecentlyDeselected] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [jobDescription, setJobDescription] = useState('');
+  const [jobAnalysis, setJobAnalysis] = useState(null);
+  const [isAnalyzingJob, setIsAnalyzingJob] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -45,6 +48,32 @@ const Demo = () => {
 
   const clearSessionName = () => {
     setSessionName('');
+  };
+
+  const analyzeJobDescription = async (description) => {
+    setIsAnalyzingJob(true);
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/analyze-job-description', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobDescription: description }),
+      });
+
+      if (response.ok) {
+        const analysis = await response.json();
+        setJobAnalysis(analysis);
+      } else {
+        console.error('Failed to analyze job description');
+        setJobAnalysis({ error: 'Failed to analyze job description' });
+      }
+    } catch (error) {
+      console.error('Error analyzing job description:', error);
+      setJobAnalysis({ error: 'Error analyzing job description' });
+    } finally {
+      setIsAnalyzingJob(false);
+    }
   };
 
   const handleLinkClick = (e, path) => {
@@ -93,7 +122,13 @@ const Demo = () => {
     handleMouseEnter,
     handleMouseLeave,
     handleSessionNameChange,
-    clearSessionName
+    clearSessionName,
+    jobDescription,
+    setJobDescription,
+    jobAnalysis,
+    setJobAnalysis,
+    isAnalyzingJob,
+    analyzeJobDescription,
   };
 
   return (
@@ -101,8 +136,8 @@ const Demo = () => {
       <div className="top-bar">
         <div className="logo-container">
           <div className="logo-icon">
-            <img 
-              src="/logo/acey-logo.png" 
+            <img
+              src="/logo/acey-logo.png"
               alt="Acey Logo"
               className="logo-image"
               onError={(e) => {
@@ -119,8 +154,8 @@ const Demo = () => {
       <div className="content-area">
         <div className="sidebar">
           <div className="sidebar-top">
-            <Link 
-              to="/demo" 
+            <Link
+              to="/demo"
               className="new-chat-button"
               onClick={(e) => handleLinkClick(e, '/demo')}
             >
@@ -145,7 +180,7 @@ const Demo = () => {
           <Outlet context={selectionState} />
         </div>
       </div>
-      
+
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="modal-overlay" onClick={cancelNavigation}>

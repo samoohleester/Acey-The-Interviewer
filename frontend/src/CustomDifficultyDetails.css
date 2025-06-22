@@ -1,0 +1,205 @@
+.custom-difficulty-details {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0 10px 10px 10px;
+    animation: fadeIn 0.4s 0.3s forwards;
+    opacity: 0;
+    box-sizing: border-box;
+}
+
+.custom-difficulty-details .form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    width: 100%;
+}
+
+.custom-difficulty-details label {
+    color: #a0a0a0;
+    font-size: 9px;
+    white-space: nowrap;
+    margin-right: 8px;
+}
+
+.custom-difficulty-details input[type="text"] {
+    background-color: #3a3a3a;
+    border: 1px solid #555;
+    border-radius: 2px;
+    color: #fff;
+    padding: 3px 6px;
+    font-size: 8px;
+    min-width: 97px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.custom-difficulty-details input[type="text"]:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 4px rgba(74, 144, 226, 0.5);
+}
+
+.custom-difficulty-details input[type="text"]::placeholder {
+    color: #666;
+    font-style: italic;
+}
+
+.dropdown-container {
+    position: relative;
+    width: 100%;
+}
+
+.dropdown-btn {
+    background-color: #3a3a3a;
+    border: 1px solid #555;
+    border-radius: 2px;
+    color: #fff;
+    padding: 3px 6px;
+    font-size: 8px;
+    cursor: pointer;
+    min-width: 110px;
+    text-align: center;
+    font-family: 'Helvetica Neue', sans-serif;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.dropdown-btn:hover {
+    border-color: #4a90e2;
+    box-shadow: 0 0 4px rgba(74, 144, 226, 0.5);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #2c2c2c;
+    border: 1px solid #555;
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+    max-height: 120px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dropdown-item {
+    padding: 3px 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 8px;
+    color: #fff;
+    border-bottom: 1px solid #3a3a3a;
+    font-family: 'Helvetica Neue', sans-serif;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background-color: #3a3a3a;
+    color: #4a90e2;
+}
+
+.dropdown-item:active {
+    background-color: #555;
+}
+
+.continue-btn {
+    background: linear-gradient(to bottom, #05387E, #1758B3 85%);
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    padding: 5px;
+    font-size: 9px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    width: 100%;
+    font-family: 'Helvetica Neue', sans-serif;
+    animation: popIn 0.3s ease-out forwards;
+}
+
+.continue-btn:hover {
+    background: linear-gradient(to bottom, #042d6b, #0f4a8a 85%);
+}
+
+.continue-btn:active {
+    transform: scale(0.98);
+}
+
+/* Custom scrollbar for dropdown */
+.dropdown-menu::-webkit-scrollbar {
+    width: 4px;
+}
+
+.dropdown-menu::-webkit-scrollbar-track {
+    background: #2c2c2c;
+    border-radius: 2px;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 2px;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+/* Animation for dropdown */
+.dropdown-menu {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .custom-difficulty-details {
+        padding: 0 8px 8px 8px;
+    }
+
+    .dropdown-menu {
+        max-height: 100px;
+    }
+}

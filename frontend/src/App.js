@@ -7,6 +7,7 @@ import Demo from './Demo';
 import DifficultySelection from './DifficultySelection';
 import Conversation from './Conversation';
 import Report from './Report';
+import JobAnalysis from './JobAnalysis';
 import { Trash, ChatHistory, Profile, Support } from './placeholders';
 import './App.css';
 
@@ -24,6 +25,7 @@ function App() {
         <Route path="profile" element={<Profile />} />
         <Route path="support" element={<Support />} />
       </Route>
+      <Route path="/job-analysis" element={<JobAnalysis />} />
       <Route path="/report" element={<Report />} />
     </Routes>
   );

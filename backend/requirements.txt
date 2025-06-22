@@ -1,6 +1,8 @@
-Flask
-Flask-Cors
+Flask==2.3.3
+Flask-Cors==4.0.0
 vapi-server-sdk
-google-generativeai
-python-dotenv
-Pillow 
+google-generativeai==0.3.2
+python-dotenv==1.0.0
+Pillow==10.0.1
+requests==2.31.0
+beautifulsoup4==4.12.2 
