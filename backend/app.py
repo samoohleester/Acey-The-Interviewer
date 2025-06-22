@@ -2,7 +2,6 @@ import os
 import sys
 from io import BytesIO
 
-# Add parent directory to path to import interview_agents and other root modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import base64
@@ -19,7 +18,6 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-# Try to import agent_client, but make it optional
 try:
     from agent_client import get_followup_from_agent
     AGENT_AVAILABLE = True
@@ -39,16 +37,14 @@ NGROK_URL = os.getenv("NGROK_URL", "YOUR_NGROK_HTTPS_URL_HERE")
 
 
 load_dotenv()
-
+#loading flask
 app = Flask(__name__)
 
 CORS(app)
 
 
-# Global variable to store current job analysis
 current_job_analysis = None
-
-# Check if required API keys are available
+#call the api keys
 VAPI_API_KEY = os.environ.get('VAPI_API_KEY')
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 
@@ -70,12 +66,13 @@ frame_analyses = []
 question_count = 0
 current_assistant_id = None
 rate_limit_hit = False
-
+#testing backend
 @app.route('/api/data')
 def get_data():
     return {'message': 'Hello from your Flask backend!'}
 
 @app.route('/api/vapi-assistant')
+#vapi calls
 def get_vapi_assistant():
  
     mode = request.args.get('mode', 'easy')
@@ -99,7 +96,6 @@ def get_vapi_assistant():
         timestamp = int(time.time())
         assistant_name = f"Direct-Interviewer-{mode}-{timestamp}"
         
-        # Create custom system prompt for custom mode
         if mode == 'custom':
             system_prompt_content = f"""You are Acey The Interviewer, an AI-powered interview coach conducting a custom interview session.
 
@@ -192,7 +188,7 @@ When asking questions, tailor them to assess the candidate's fit for this specif
         else:
             first_message = "What job are you currently interviewing for" if mode == 'easy' else "Let's begin. Tell me about a challenging situation you faced at work." if mode == 'medium' else "Ready? Describe a time you had to make a difficult decision under pressure."
         
-        # Add role-specific first message if job analysis is available
+        # vapi 1.5 gemini flash
         if current_job_analysis and not current_job_analysis.get('error'):
             role = current_job_analysis.get('role', 'this role')
             first_message = f"Welcome to your interview for the {role} position. Let's start by discussing your relevant experience and how it aligns with this role."
@@ -280,20 +276,18 @@ def analyze_frame():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Failed to analyze frame: {str(e)}"}), 500
-
+#analyzation of the frames through different video frames
 @app.route('/api/get-review', methods=['POST'])
 def get_review():
     data = request.get_json()
     transcript = data.get('transcript')
-    mode = data.get('mode', 'easy')  # Default to easy if not provided
+    mode = data.get('mode', 'easy')
 
     if not transcript and not frame_analyses:
         return jsonify({"review": {"error": "No data available for review. The call may have been too short."}})
 
-    # Build the prompt for comprehensive review
     body_language_summary = "No frames were analyzed."
     if frame_analyses:
-        # Join the list of individual frame analyses into a single string
         body_language_summary = "\\n- ".join(frame_analyses)
 
     synthesis_prompt = f"""
@@ -395,12 +389,10 @@ def get_review():
         print("Generating comprehensive review with Gemini...")
         response = model.generate_content(synthesis_prompt)
         
-        # Clean the response to ensure it's valid JSON
         cleaned_response_text = response.text.strip().replace("```json", "").replace("```", "")
         review_json = json.loads(cleaned_response_text)
         
         print("Generated Review JSON:", review_json)
-        # Clear the stored analyses for the next call
         frame_analyses.clear()
         
         return jsonify(review_json)
@@ -434,7 +426,6 @@ def agent_followup():
         return jsonify({'error': 'No answer provided'}), 400
 
     try:
-        # Use agent and generate a follow-up question
         followup = get_followup_from_agent(mode, answer, question_context, user_id)
         
         return jsonify({
@@ -457,20 +448,14 @@ def analyze_job_description():
 
     try:
         print(f"Received job description request. Length: {len(job_description)} characters")
-        
-        # Check if it's a LinkedIn URL
         if 'linkedin.com/jobs' in job_description:
             print("Detected LinkedIn URL, attempting to extract content...")
-            # Extract content from LinkedIn URL
             job_content = extract_linkedin_content(job_description)
             
-            # Check if the extraction failed
             if job_content.startswith("Error") or job_content.startswith("Invalid") or job_content.startswith("LinkedIn job posting content could not be extracted"):
                 print(f"LinkedIn extraction failed: {job_content}")
                 
-                # Try to extract basic info from the URL itself
                 try:
-                    # Extract job title from URL if possible
                     url_parts = job_description.split('/')
                     job_title = None
                     for i, part in enumerate(url_parts):
@@ -494,12 +479,10 @@ def analyze_job_description():
                 return jsonify({"error": job_content}), 400
         else:
             print("Using provided text directly")
-            # Use the provided text directly
             job_content = job_description
 
         print(f"Job content length: {len(job_content)} characters")
         
-        # Analyze the job content using AI
         analysis = analyze_job_content(job_content)
         
         if analysis.get('error'):
@@ -517,7 +500,6 @@ def analyze_job_description():
 def extract_linkedin_content(url):
     """Extract job description content from LinkedIn URL"""
     try:
-        # Validate URL format
         if not url.startswith('http'):
             return "Invalid URL format. Please provide a complete LinkedIn job URL."
         
@@ -537,7 +519,6 @@ def extract_linkedin_content(url):
         print(f"Successfully fetched LinkedIn page, status: {response.status_code}")
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Try multiple selectors for job description content
         selectors = [
             '.description__text',
             '.job-description',
@@ -563,7 +544,7 @@ def extract_linkedin_content(url):
                 element = soup.select_one(selector)
                 if element:
                     text = element.get_text(strip=True)
-                    if len(text) > 50:  # Ensure we got meaningful content
+                    if len(text) > 50:
                         print(f"Found content using selector {i+1}: {selector}")
                         print(f"Content length: {len(text)} characters")
                         return text
@@ -571,14 +552,12 @@ def extract_linkedin_content(url):
                 print(f"Error with selector {selector}: {e}")
                 continue
         
-        # If no specific job description found, try to get the page title and any visible text
         print("No specific job description found, trying to extract general page content...")
         title = soup.find('title')
         if title:
             title_text = title.get_text(strip=True)
             print(f"Found page title: {title_text}")
-            
-            # Also try to get any paragraph content
+        
             paragraphs = soup.find_all('p')
             paragraph_text = ' '.join([p.get_text(strip=True) for p in paragraphs[:10]])
             
@@ -590,11 +569,9 @@ def extract_linkedin_content(url):
                 print("No paragraph content found, returning title only")
                 return title_text
         
-        # Try to find any text content that might be job-related
         print("Trying to find any job-related content...")
         all_text = soup.get_text()
         if len(all_text) > 100:
-            # Look for common job-related keywords
             job_keywords = ['responsibilities', 'requirements', 'qualifications', 'experience', 'skills', 'duties', 'role', 'position']
             lines = all_text.split('\n')
             relevant_lines = []
@@ -605,7 +582,7 @@ def extract_linkedin_content(url):
                     relevant_lines.append(line)
             
             if relevant_lines:
-                content = '\n'.join(relevant_lines[:20])  # Limit to first 20 relevant lines
+                content = '\n'.join(relevant_lines[:20])
                 print(f"Found {len(relevant_lines)} relevant lines")
                 return content
         
@@ -638,13 +615,10 @@ def extract_linkedin_content(url):
 def analyze_job_content(content):
     """Analyze job content using AI to extract key information"""
     try:
-        # Check if Google API key is available
         if not model:
-            # Fallback analysis without AI
             print("Using fallback job analysis (no AI)")
             return fallback_job_analysis(content)
-        
-        # Limit content length to avoid token limits
+
         if len(content) > 4000:
             content = content[:4000] + "..."
         
@@ -670,7 +644,6 @@ def analyze_job_content(content):
         
         response = model.generate_content(prompt)
         
-        # Clean the response to ensure it's valid JSON
         cleaned_response = response.text.strip()
         if cleaned_response.startswith('```json'):
             cleaned_response = cleaned_response[7:]
@@ -681,16 +654,14 @@ def analyze_job_content(content):
         if cleaned_response.endswith('```'):
             cleaned_response = cleaned_response[:-3]
         
-        # Try to parse the JSON
         try:
             analysis = json.loads(cleaned_response.strip())
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {e}")
             print(f"Raw response: {cleaned_response}")
-            # Return a fallback analysis
+
             return fallback_job_analysis(content)
         
-        # Store the analysis for use in interview generation
         global current_job_analysis
         current_job_analysis = analysis
         
@@ -706,7 +677,6 @@ def fallback_job_analysis(content):
     """Simple fallback job analysis without AI"""
     content_lower = content.lower()
     
-    # Extract basic information using simple text analysis
     role = "Job Role"
     company = "Company"
     key_responsibilities = "Responsibilities will be assessed during the interview"
@@ -714,15 +684,13 @@ def fallback_job_analysis(content):
     experience_level = "Not specified"
     industry = "Not specified"
     interview_focus = "Focus on general interview skills and experience"
-    
-    # Try to extract role from common patterns
+
     role_keywords = ['engineer', 'developer', 'manager', 'analyst', 'specialist', 'coordinator', 'assistant', 'director', 'lead', 'architect']
     for keyword in role_keywords:
         if keyword in content_lower:
             role = f"{keyword.title()} Position"
             break
     
-    # Try to extract company name
     if 'at ' in content_lower:
         parts = content.split(' at ')
         if len(parts) > 1:
@@ -730,7 +698,6 @@ def fallback_job_analysis(content):
             if len(company_part) > 2:
                 company = company_part.title()
     
-    # Try to extract experience level
     if 'senior' in content_lower:
         experience_level = "Senior"
     elif 'junior' in content_lower or 'entry' in content_lower:
@@ -738,7 +705,6 @@ def fallback_job_analysis(content):
     elif 'mid' in content_lower or 'intermediate' in content_lower:
         experience_level = "Mid"
     
-    # Try to extract industry
     industry_keywords = {
         'tech': 'Technology',
         'software': 'Technology',
@@ -765,7 +731,6 @@ def fallback_job_analysis(content):
         "interviewFocus": interview_focus
     }
     
-    # Store the analysis for use in interview generation
     global current_job_analysis
     current_job_analysis = analysis
     
