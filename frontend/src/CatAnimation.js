@@ -139,9 +139,9 @@ const CatAnimation = ({ isSpeaking, callStatus, interviewMode }) => {
         </div>
       </div>
       {interviewMode !== 'medium' && (
-        <div className="cat-status">
-          {isSpeaking ? 'AI Speaking...' : isIdle ? 'Listening...' : 'Ready...'}
-        </div>
+      <div className="cat-status">
+        {isSpeaking ? 'AI Speaking...' : isIdle ? 'Listening...' : 'Ready...'}
+      </div>
       )}
     </div>
   );

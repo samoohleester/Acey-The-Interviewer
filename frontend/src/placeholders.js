@@ -295,41 +295,41 @@ export const ChatHistory = () => {
           {savedInterviews.map((interview) => {
             const interviewBadges = getInterviewBadges(interview);
             return (
-              <div key={interview.id} className="interview-card">
-                <div className="interview-header">
-                  <h3>{interview.title}</h3>
-                  <div className="interview-meta">
-                    <span className="difficulty-badge">{interview.difficulty}</span>
-                    <span className="date">{new Date(interview.date).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                
-                <div className="interview-stats">
-                  <div className="stat">
-                    <span className="stat-label">Score</span>
-                    <span className="stat-value">{interview.score}/100</span>
-                  </div>
-                  <div className="stat">
-                    <span className="stat-label">Duration</span>
-                    <span className="stat-value">{interview.duration}</span>
-                  </div>
-                </div>
-                
-                <div className="interview-actions">
-                  <button 
-                    onClick={() => viewInterview(interview)}
-                    className="view-btn"
-                  >
-                    View Report
-                  </button>
-                  <button 
-                    onClick={() => deleteInterview(interview.id)}
-                    className="delete-btn"
-                  >
-                    Delete
-                  </button>
+            <div key={interview.id} className="interview-card">
+              <div className="interview-header">
+                <h3>{interview.title}</h3>
+                <div className="interview-meta">
+                  <span className="difficulty-badge">{interview.difficulty}</span>
+                  <span className="date">{new Date(interview.date).toLocaleDateString()}</span>
                 </div>
               </div>
+              
+              <div className="interview-stats">
+                <div className="stat">
+                  <span className="stat-label">Score</span>
+                  <span className="stat-value">{interview.score}/100</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-label">Duration</span>
+                  <span className="stat-value">{interview.duration}</span>
+                </div>
+              </div>
+              
+              <div className="interview-actions">
+                <button 
+                  onClick={() => viewInterview(interview)}
+                  className="view-btn"
+                >
+                  View Report
+                </button>
+                <button 
+                  onClick={() => deleteInterview(interview.id)}
+                  className="delete-btn"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
             );
           })}
         </div>
