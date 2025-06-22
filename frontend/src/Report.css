@@ -81,6 +81,14 @@ body {
     font-weight: normal;
 }
 
+.score-explanation {
+  margin-top: 10px;
+  font-style: italic;
+  color: #ccc;
+  max-width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+}
 
 /* Feedback Section */
 .feedback-section {

@@ -26,9 +26,12 @@ const Report = () => {
       <div className="score-container">
         <div className="score-circle">
           <span className="score-number">{report.overallScore}</span>
-          <span className="score-label">/ 10</span>
+          <span className="score-label">/ 100</span>
         </div>
         <h2>Overall Score</h2>
+        {report.scoreExplanation && (
+          <p className="score-explanation">{report.scoreExplanation}</p>
+        )}
       </div>
 
       <div className="feedback-section">

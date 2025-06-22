@@ -64,6 +64,7 @@ def get_vapi_assistant():
                 "provider": "deepgram",
                 "model": "nova-2",
                 "language": "en-US",
+                "endpointing": 500
             },
             model={
                 "provider": "google",
@@ -119,7 +120,7 @@ def analyze_frame():
         image = Image.open(BytesIO(frame_bytes))
         print(f"Image opened successfully: {image.size} {image.mode}")
         
-        prompt = "You are a body language expert. Analyze this single frame from a mock interview. Focus on eye contact (are they looking at the camera?), facial expression (do they look engaged and friendly?), and posture (are they sitting up straight?). Provide one specific, encouraging tip for improvement. Address the user as 'you'. Example: 'You look engaged! Try to maintain eye contact with the camera as if it were the interviewer.'"
+        prompt = "You are a body language expert. Analyze this single frame from a mock interview. Focus on eye contact (are they looking at the computer screen area?), facial expression (do they look engaged and friendly?), and posture (are they sitting up straight?). For eye contact, it's acceptable if they're looking at the computer screen - only note it as an issue if they're looking completely away from the screen. Provide one specific, encouraging tip for improvement. Address the user as 'you'. Example: 'You look engaged! Try to maintain focus on the screen area as if you're making eye contact with the interviewer.'"
         print("Sending to Gemini for analysis...")
         response = model.generate_content([prompt, image])
         
@@ -181,11 +182,20 @@ def get_review():
     {{
       "whatYouDidWell": ["Point 1 about what went well.", "Point 2 about what went well."],
       "areasForImprovement": ["Point 1 about what to improve.", "Point 2 about what to improve."],
-      "overallScore": <an integer score from 1 to 10>,
+      "overallScore": <an integer score from 1 to 100>,
+      "scoreExplanation": "A brief, one-sentence explanation of the score, noting how verbal and non-verbal factors were weighted. Example: 'Your body language was strong, but the score was impacted by a lack of structured answers.'",
       "summary": "A brief, one-paragraph summary of the feedback."
     }}
     
-    Analyze for clarity, conciseness, filler words, STAR method usage, engagement, and eye contact.
+    IMPORTANT SCORING RULES:
+    - Start with a base score of 100 points
+    - For filler words (um, uh, oh, uhm, etc.), only deduct 1 point per occurrence IF the same filler word is used repeatedly between sentences
+    - Do NOT penalize for occasional, natural filler words within a single sentence
+    - Only count it as a deduction if the candidate uses the same filler word multiple times as sentence transitions
+    - Example: "Um, I worked on a project. Um, it was challenging. Um, I learned a lot." = 3 point deduction (97/100)
+    - Example: "I um worked on a project. It was challenging. I learned a lot." = 0 point deduction (100/100)
+    
+    Analyze for clarity, conciseness, STAR method usage, engagement, and eye contact.
     """
 
     try:
@@ -212,7 +222,8 @@ def get_review():
             "summary": "There was an error generating your review. The AI response may not have been in the correct format. Please try again.",
             "whatYouDidWell": [],
             "areasForImprovement": [],
-            "overallScore": 0
+            "overallScore": 0,
+            "scoreExplanation": "Could not generate a score explanation."
         }
         frame_analyses.clear()
         return jsonify(fallback_review), 500
